@@ -13,60 +13,329 @@ export const modules = [
         id: 1,
         title: "Linux Filesystem Hierarchy (FHS)",
         type: "theory",
-        duration: "20 min",
+        duration: "35 min",
         content: `
 ## Linux Filesystem Hierarchy Standard (FHS)
 
-Linux'da barcha narsalar **fayl** sifatida ko'riladi — oddiy fayllar, directorylar, devices, socketlar va boshqalar.
+Linux'da barcha narsalar **fayl** sifatida ko'riladi — oddiy fayllar, directorylar, devices, socketlar, pipes va boshqalar. Bu Unix falsafasining asosiy prinsipidir.
 
-### Asosiy Directorylar
+### Asosiy Directorylar (Batafsil)
 
-| Directory | Tavsif | Real misol |
-|-----------|--------|------------|
-| \`/\` | Root directory — barcha narsaning boshlanishi | Sistemaning asosi |
-| \`/bin\` | Essential user binaries | \`ls\`, \`cp\`, \`cat\`, \`bash\` |
-| \`/sbin\` | System binaries (root uchun) | \`fsck\`, \`reboot\`, \`iptables\` |
-| \`/etc\` | Configuration files | \`/etc/nginx/nginx.conf\` |
-| \`/home\` | User home directories | \`/home/admin\` |
-| \`/root\` | Root user's home | Root'ning shaxsiy papkasi |
-| \`/var\` | Variable data | Logs, cache, spool |
-| \`/tmp\` | Temporary files | Reboot'da o'chadi |
-| \`/usr\` | User programs | Secondary hierarchy |
-| \`/opt\` | Third-party software | Custom apps |
-| \`/proc\` | Process information (virtual) | \`/proc/cpuinfo\` |
-| \`/sys\` | System information (virtual) | Hardware ma'lumotlari |
-| \`/dev\` | Device files | \`/dev/sda\`, \`/dev/null\` |
+| Directory | Tavsif | Real Production Misollari | Mount Point? |
+|-----------|--------|-------------------------|--------------|
+| \`/\` | Root directory — barcha narsaning boshlanishi | Sistemaning asosi | ✅ (har doim) |
+| \`/bin\` | Essential user binaries (symlink to /usr/bin) | \`ls\`, \`cp\`, \`cat\`, \`bash\`, \`grep\` | ❌ |
+| \`/sbin\` | System binaries (root privileges kerak) | \`fsck\`, \`reboot\`, \`iptables\`, \`mkfs\` | ❌ |
+| \`/etc\` | Configuration files | \`/etc/nginx/nginx.conf\`, \`/etc/hosts\` | ❌ |
+| \`/home\` | User home directories | \`/home/admin\`, \`/home/developer\` | ✅ (odatda) |
+| \`/root\` | Root user's home directory | Root'ning .bashrc, .ssh/ | ❌ |
+| \`/var\` | Variable data (growing files) | Logs, databases, cache, mail spool | ✅ (tavsiya) |
+| \`/tmp\` | Temporary files (reboot'da o'chadi) | Session data, temp uploads | ✅ (tmpfs) |
+| \`/usr\` | User programs & read-only data | Applications, libraries, docs | ❌ |
+| \`/usr/local\` | Locally installed software | Custom compiled apps | ❌ |
+| \`/opt\` | Third-party/vendor software | \`/opt/google/chrome\`, \`/opt/app\` | ✅ (katta apps) |
+| \`/proc\` | Process & kernel info (virtual FS) | \`/proc/cpuinfo\`, \`/proc/meminfo\` | Auto |
+| \`/sys\` | System & hardware info (virtual) | \`/sys/class/net/eth0/\` | Auto |
+| \`/dev\` | Device files | \`/dev/sda\`, \`/dev/null\`, \`/dev/random\` | Auto |
+| \`/boot\` | Boot loader files (kernel, initramfs) | \`/boot/vmlinuz-*\`, \`/boot/grub/\` | ✅ (ayrı) |
+| \`/lib\` | Essential shared libraries | \`libc.so.6\`, kernel modules | ❌ |
+| \`/mnt\` | Temporary mount point | Manual mount uchun | ❌ |
+| \`/media\` | Removable media | \`/media/usb\`, \`/media/cdrom\` | Auto |
+| \`/srv\` | Service data | \`/srv/www\`, \`/srv/ftp\` | ✅ (data) |
+| \`/run\` | Runtime data (tmpfs) | PID files, sockets | Auto |
 
 ### Production'da Eng Ko'p Ishlatiladigan Pathlar
 
+#### Web Servers
 \`\`\`bash
-# Web server configs
-/etc/nginx/
-/etc/apache2/
-/etc/httpd/
+# Nginx
+/etc/nginx/nginx.conf          # Main config
+/etc/nginx/sites-available/    # Available sites
+/etc/nginx/sites-enabled/      # Enabled sites (symlinks)
+/var/log/nginx/access.log      # Access logs
+/var/log/nginx/error.log       # Error logs
+/var/www/html/                 # Default web root
 
-# Logs
-/var/log/messages
-/var/log/syslog
-/var/log/nginx/access.log
-
-# Application data
-/var/www/html/
-/opt/myapp/
-
-# Systemd services
-/etc/systemd/system/
-/usr/lib/systemd/system/
+# Apache
+/etc/apache2/apache2.conf      # RHEL: /etc/httpd/conf/httpd.conf
+/etc/apache2/sites-available/
+/var/log/apache2/              # RHEL: /var/log/httpd/
 \`\`\`
 
-### Muhim Tushunchalar
+#### System Logs (Asosiy)
+\`\`\`bash
+/var/log/syslog                # Debian/Ubuntu - main system log
+/var/log/messages              # RHEL/CentOS - system messages
+/var/log/auth.log              # Authentication (Debian)
+/var/log/secure                # Authentication (RHEL)
+/var/log/kern.log              # Kernel messages
+/var/log/dmesg                 # Boot messages
+/var/log/cron                  # Cron job logs
+/var/log/mail.log              # Mail server logs
 
-1. **Everything is a file** — Linux falsafasi
-2. **Absolute path** — \`/\` dan boshlanadi: \`/home/user/file.txt\`
-3. **Relative path** — joriy directoryga nisbatan: \`./file.txt\` yoki \`../parent/file.txt\`
-4. **Hidden files** — \`.\` bilan boshlanadi: \`.bashrc\`, \`.ssh/\`
+# Application logs
+/var/log/mysql/error.log
+/var/log/postgresql/
+/var/log/redis/redis-server.log
+\`\`\`
 
-> **LFCS Tip:** Imtihonda ko'pincha "X service config qayerda?" degan savollar bo'ladi. Javob deyarli doim \`/etc/service-name/\` ichida.
+#### Systemd & Services
+\`\`\`bash
+/etc/systemd/system/           # Custom unit files
+/usr/lib/systemd/system/       # Package unit files
+/etc/systemd/system/multi-user.target.wants/  # Enabled services
+
+# View service logs
+journalctl -u nginx.service
+journalctl -u ssh.service -f   # Follow mode
+\`\`\`
+
+#### Networking
+\`\`\`bash
+/etc/hosts                     # Static hostname mapping
+/etc/resolv.conf               # DNS servers
+/etc/network/interfaces        # Debian network config
+/etc/sysconfig/network-scripts/ifcfg-eth0  # RHEL
+/etc/netplan/*.yaml            # Ubuntu 18.04+ (netplan)
+/etc/ssh/sshd_config           # SSH server config
+/etc/ssh/ssh_config            # SSH client config
+\`\`\`
+
+#### Package Management
+\`\`\`bash
+# Debian/Ubuntu (APT)
+/etc/apt/sources.list          # Repository list
+/etc/apt/sources.list.d/       # Additional repos
+/var/lib/apt/lists/            # Package cache
+/var/cache/apt/archives/       # Downloaded .deb files
+
+# RHEL/CentOS (YUM/DNF)
+/etc/yum.repos.d/              # Repository configs
+/var/cache/yum/                # YUM cache
+/var/lib/rpm/                  # RPM database
+\`\`\`
+
+#### User & Authentication
+\`\`\`bash
+/etc/passwd                    # User account info (NOT passwords!)
+/etc/shadow                    # Actual password hashes (root only)
+/etc/group                     # Group definitions
+/etc/sudoers                   # Sudo permissions
+/etc/sudoers.d/                # Modular sudo configs
+/home/user/.ssh/authorized_keys # SSH public keys
+\`\`\`
+
+### Muhim Tushunchalar (Advanced)
+
+#### 1. Everything is a File
+\`\`\`bash
+# Regular file
+-rw-r--r-- 1 user user 1234 Jan 30 file.txt
+
+# Directory (also a file!)
+drwxr-xr-x 2 user user 4096 Jan 30 mydir/
+
+# Symbolic link
+lrwxrwxrwx 1 user user 10 Jan 30 link -> /path/to/file
+
+# Block device (disk)
+brw-rw---- 1 root disk 8, 0 Jan 30 /dev/sda
+
+# Character device (terminal)
+crw--w---- 1 user tty 136, 0 Jan 30 /dev/pts/0
+
+# Named pipe (FIFO)
+prw-r--r-- 1 user user 0 Jan 30 mypipe
+
+# Socket
+srwxrwxrwx 1 user user 0 Jan 30 /run/docker.sock
+\`\`\`
+
+#### 2. Absolute vs Relative Paths
+\`\`\`bash
+# Absolute path — har doim / dan boshlanadi
+cd /home/admin/projects/app
+pwd
+# Output: /home/admin/projects/app
+
+# Relative path — current directory'ga nisbatan
+cd ../data              # Parent directory ichidagi data/
+cd ./config            # Current directory ichidagi config/
+cd ~                   # Home directory
+cd -                   # Previous directory
+\`\`\`
+
+#### 3. Hidden Files
+\`\`\`bash
+# . bilan boshlangan fayllar "hidden"
+ls -a                  # Show all (including hidden)
+ls -A                  # Show all except . and ..
+
+# Common hidden files
+~/.bashrc              # Bash config (user-specific)
+~/.ssh/                # SSH keys & config
+~/.vimrc               # Vim editor config
+~/.gitconfig           # Git global config
+~/.profile             # Login shell config
+\`\`\`
+
+#### 4. Special Directories
+\`\`\`bash
+.                      # Current directory
+..                     # Parent directory
+~                      # User's home directory
+-                      # Previous directory (cd -)
+
+# Examples
+cp file.txt .          # Copy to current dir
+cd ..                  # Go up one level
+ls ~/Documents         # List home/Documents
+cd -                   # Return to previous dir
+\`\`\`
+
+### Virtual Filesystems (Advanced Troubleshooting)
+
+#### /proc — Process & Kernel Info
+\`\`\`bash
+# CPU info
+cat /proc/cpuinfo
+grep -c processor /proc/cpuinfo  # CPU count
+
+# Memory info
+cat /proc/meminfo
+free -h                          # Human-readable
+
+# Current processes
+ls -la /proc/                    # Each number = PID
+cat /proc/1234/cmdline           # Process 1234 command
+cat /proc/1234/status            # Process status
+cat /proc/1234/limits            # Process limits
+
+# Network
+cat /proc/net/dev                # Network interfaces
+cat /proc/net/tcp                # TCP connections
+
+# System info
+cat /proc/version                # Kernel version
+cat /proc/uptime                 # System uptime
+cat /proc/loadavg                # Load average
+\`\`\`
+
+#### /sys — Hardware & Kernel Parameters
+\`\`\`bash
+# Block devices
+ls /sys/block/                   # sda, sdb, etc.
+cat /sys/block/sda/size          # Disk size (sectors)
+
+# Network interfaces
+ls /sys/class/net/               # eth0, wlan0, etc.
+cat /sys/class/net/eth0/address  # MAC address
+cat /sys/class/net/eth0/operstate # up/down
+
+# Power management
+cat /sys/class/power_supply/BAT0/capacity  # Battery %
+\`\`\`
+
+### Common Production Scenarios
+
+#### Scenario 1: Disk Full — /var Partition
+\`\`\`bash
+# Problem: Application can't write logs
+df -h                            # Check disk usage
+# Output: /var is 100% full
+
+# Find largest directories
+du -sh /var/* | sort -rh | head -10
+
+# Solution: Clean old logs
+find /var/log -name "*.log" -mtime +30 -delete
+find /var/log -name "*.gz" -mtime +90 -delete
+
+# Rotate logs immediately
+logrotate -f /etc/logrotate.conf
+\`\`\`
+
+#### Scenario 2: Config File Missing
+\`\`\`bash
+# Problem: nginx won't start
+systemctl start nginx
+# Error: config file not found
+
+# Check expected location
+ls -la /etc/nginx/nginx.conf
+
+# If missing, restore from package
+apt-get install --reinstall nginx-core  # Debian
+yum reinstall nginx                     # RHEL
+\`\`\`
+
+#### Scenario 3: Permission Denied
+\`\`\`bash
+# Problem: can't read /var/log/syslog
+cat /var/log/syslog
+# Permission denied
+
+# Check ownership
+ls -l /var/log/syslog
+# -rw-r----- 1 syslog adm 123456 Jan 30 syslog
+
+# Solution: add user to adm group
+sudo usermod -aG adm username
+# Re-login to apply
+\`\`\`
+
+### Best Practices for LFCS
+
+1. **Memorize key paths:**
+   - \`/etc/\` — configs
+   - \`/var/log/\` — logs
+   - \`/var/www/\` — web data
+   - \`/etc/systemd/system/\` — services
+
+2. **Use tab completion:**
+   - Type \`cd /etc/net<TAB>\` → auto-completes
+
+3. **Quick navigation:**
+   - \`cd -\` — toggle between two directories
+   - \`pushd /path\` and \`popd\` — directory stack
+
+4. **Check before you delete:**
+   - \`ls /path/*\` before \`rm -rf /path/*\`
+
+> **LFCS Exam Tip:** You'll be asked "Where is the config file for X service?" — Answer is almost always \`/etc/service-name/\`. Example: Nginx → \`/etc/nginx/\`, SSH → \`/etc/ssh/\`
+
+### Distribution Differences
+
+| Aspect | Debian/Ubuntu | RHEL/CentOS/Alma |
+|--------|---------------|------------------|
+| Main log | \`/var/log/syslog\` | \`/var/log/messages\` |
+| Auth log | \`/var/log/auth.log\` | \`/var/log/secure\` |
+| Network config | \`/etc/network/\` or \`/etc/netplan/\` | \`/etc/sysconfig/network-scripts/\` |
+| Apache config | \`/etc/apache2/\` | \`/etc/httpd/\` |
+| Apache binary | \`apache2\` | \`httpd\` |
+
+### Quick Reference Commands
+
+\`\`\`bash
+# Navigate filesystem
+pwd                    # Print working directory
+cd /path               # Change directory
+ls -la                 # List all with details
+tree /path             # Visual tree (install: apt install tree)
+
+# Disk usage
+df -h                  # Filesystem usage
+du -sh /path           # Directory size
+du -sh * | sort -rh    # Largest items first
+
+# Find files
+find / -name "*.conf" 2>/dev/null
+locate nginx.conf      # Fast search (updatedb first)
+
+# File types
+file /path/to/file     # Determine file type
+stat /path/to/file     # Detailed file info
+\`\`\`
         `,
         keyPoints: [
           "Linux'da hamma narsa fayl hisoblanadi",
@@ -161,87 +430,436 @@ cat /opt/lfcs-lab/symlink.txt   # ❌ Xato
         id: 3,
         title: "Find Command — Professional Usage",
         type: "theory",
-        duration: "25 min",
+        duration: "40 min",
         content: `
 ## Find Command — Linux Admin's Best Friend
 
-\`find\` — eng kuchli va ko'p ishlatiladigan buyruqlardan biri. Production'da disk to'lganda, security audit'da, cleanup'da ishlatiladi.
+\`find\` — Linux admin'ning eng kuchli quroli. Production'da har kuni ishlatasiz: disk cleanup, security audit, file search, bulk operations.
 
 ### Asosiy Sintaksis
 
 \`\`\`bash
-find [path] [options] [expression]
+find [path...] [expression]
+
+# Expression consists of:
+# - Tests: -name, -type, -size, -mtime, -perm
+# - Actions: -print, -exec, -delete
+# - Operators: -and, -or, -not
 \`\`\`
 
-### Real Production Scenarios
+### Part 1: Basic Tests
 
-**Scenario 1: Disk to'ldi — katta fayllarni topish**
+#### By Name
+\`\`\`bash
+# Exact name
+find /var/log -name "syslog"
+
+# Pattern (case-sensitive)
+find / -name "*.conf" 2>/dev/null
+
+# Case-insensitive
+find /etc -iname "*.CONF"
+
+# Regex pattern
+find /etc -regex ".*/host.*"
+
+# NOT matching pattern
+find /var -not -name "*.log"
+\`\`\`
+
+#### By Type
+\`\`\`bash
+find /path -type f      # Regular files
+find /path -type d      # Directories
+find /path -type l      # Symbolic links
+find /path -type s      # Sockets
+find /path -type p      # Named pipes (FIFO)
+find /path -type b      # Block devices
+find /path -type c      # Character devices
+\`\`\`
+
+#### By Size
+\`\`\`bash
+# Size units: c=bytes, k=KB, M=MB, G=GB
+find / -size +100M      # Larger than 100MB
+find / -size -1k        # Smaller than 1KB
+find / -size 50M        # Exactly 50MB (rare)
+
+# Range
+find / -size +50M -size -100M  # Between 50-100MB
+
+# Empty files
+find /tmp -type f -empty
+\`\`\`
+
+#### By Time (mtime, atime, ctime)
+\`\`\`bash
+# mtime — Modified time (content changed)
+find /var/log -mtime -1      # Last 24 hours
+find /var/log -mtime +30     # Older than 30 days
+find /var/log -mtime 7       # Exactly 7 days ago
+
+# mmin — Minutes
+find /var/log -mmin -60      # Last 60 minutes
+find /var/log -mmin +120     # Older than 2 hours
+
+# atime — Access time (read)
+find /home -atime +365       # Not accessed in a year
+
+# ctime — Change time (metadata: permissions, owner)
+find /etc -ctime -1          # Metadata changed last 24h
+
+# Newer than a reference file
+find /etc -newer /tmp/reference.txt
+\`\`\`
+
+#### By Permissions
+\`\`\`bash
+# Exact permission
+find /home -perm 644         # Exactly 644
+find /home -perm 0644        # Same (leading 0)
+
+# At least these bits (-mode)
+find / -perm -4000           # SUID bit set
+find / -perm -2000           # SGID bit set
+find / -perm -1000           # Sticky bit set
+
+# Any of these bits (/mode)
+find / -perm /u+s,g+s        # SUID OR SGID
+
+# Readable by everyone
+find / -perm -004
+
+# Writable by group or others (security risk!)
+find / -perm -022
+
+# World-writable (danger!)
+find / -perm -0002 -type f
+\`\`\`
+
+#### By Owner & Group
+\`\`\`bash
+# By user
+find /home -user admin
+find / -user 1000            # By UID
+
+# By group
+find /var -group www-data
+find / -group 33             # By GID
+
+# No owner (deleted user)
+find / -nouser
+
+# No group (deleted group)
+find / -nogroup
+\`\`\`
+
+### Part 2: Real Production Scenarios
+
+#### Scenario 1: Disk Space Emergency
+\`\`\`bash
+# Server alert: /var is 95% full
+df -h | grep /var
+# Filesystem      Size  Used Avail Use% Mounted on
+# /dev/sda2        20G   19G  500M  95% /var
+
+# Find top 20 largest files in /var
+find /var -type f -printf '%s %p\\n' 2>/dev/null | \\
+  sort -rn | head -20 | awk '{print $1/1024/1024 " MB\\t" $2}'
+
+# Alternative with exec
+find /var -type f -size +50M -exec ls -lh {} \\; 2>/dev/null | \\
+  awk '{print $5 "\\t" $9}' | sort -rh | head -20
+
+# Find and summarize by directory
+du -sh /var/* | sort -rh | head -10
+
+# Often the culprits:
+# - /var/log/ — old logs not rotated
+# - /var/cache/ — package cache
+# - /var/tmp/ — temp files
+# - /var/lib/docker/ — Docker images/containers
+\`\`\`
+
+#### Scenario 2: Log Cleanup (Safe Production Method)
+\`\`\`bash
+# ⚠️ NEVER just delete running log files!
+# Wrong: rm /var/log/app.log → service still has file handle open
+
+# Method 1: Truncate (safe for running services)
+find /var/log -name "*.log" -type f -size +1G -exec truncate -s 0 {} \\;
+
+# Method 2: Cat /dev/null (same effect)
+find /var/log -name "*.log" -type f -size +1G -exec sh -c '> "$1"' _ {} \\;
+
+# Method 3: Delete old compressed logs (safe)
+find /var/log -name "*.log.gz" -mtime +90 -delete
+find /var/log -name "*.log.*.gz" -mtime +90 -delete
+
+# Method 4: Archive before delete
+find /var/log -name "*.log" -mtime +30 -exec tar -rvf /backup/old-logs.tar {} \\; -delete
+\`\`\`
+
+#### Scenario 3: Security Audit — Find Vulnerabilities
+\`\`\`bash
+# SUID/SGID files (can escalate privileges)
+find / -type f \\( -perm -4000 -o -perm -2000 \\) -exec ls -ldb {} \\; 2>/dev/null
+
+# Common legitimate SUID binaries:
+# /usr/bin/passwd, /usr/bin/sudo, /usr/bin/su
+# Suspicious: anything in /tmp, /home, /var
+
+# World-writable files (anyone can modify)
+find / -type f -perm -0002 ! -path "/proc/*" ! -path "/sys/*" 2>/dev/null
+
+# World-writable directories WITHOUT sticky bit (danger!)
+find / -type d -perm -0002 ! -perm -1000 2>/dev/null
+
+# Files with no owner (orphaned)
+find / -nouser -o -nogroup 2>/dev/null
+
+# Recently modified system files (potential breach)
+find /etc /bin /sbin /usr/bin -type f -mtime -2 2>/dev/null
+
+# Check for suspicious scripts in tmp
+find /tmp -type f \\( -name "*.sh" -o -name "*.py" \\) -exec ls -la {} \\;
+\`\`\`
+
+#### Scenario 4: Find Recently Changed Configs
+\`\`\`bash
+# Debugging: "System worked yesterday, now broken"
+
+# Files modified in last 24 hours
+find /etc -type f -mtime -1 -exec ls -lt {} + | head -20
+
+# Files changed in last 2 hours
+find /etc -type f -mmin -120 -exec ls -lt {} +
+
+# Compare with backup
+find /etc -newer /backup/snapshot.timestamp
+
+# Who changed what (if you have audit logs)
+ausearch -f /etc/nginx/nginx.conf
+\`\`\`
+
+#### Scenario 5: Find & Fix Permissions (Bulk)
+\`\`\`bash
+# Web root security: files 644, dirs 755
+find /var/www/html -type f -exec chmod 644 {} \\;
+find /var/www/html -type d -exec chmod 755 {} \\;
+
+# Or faster with xargs:
+find /var/www/html -type f -print0 | xargs -0 chmod 644
+find /var/www/html -type d -print0 | xargs -0 chmod 755
+
+# Fix ownership
+find /var/www/html -exec chown www-data:www-data {} \\;
+
+# Remove execute bit from all files (except scripts)
+find /data -type f ! -name "*.sh" -exec chmod -x {} \\;
+\`\`\`
+
+#### Scenario 6: Find & Replace in Files
+\`\`\`bash
+# Find all PHP files with old API endpoint
+find /var/www -name "*.php" -exec grep -l "old-api.com" {} \\;
+
+# Replace in all files (BACKUP FIRST!)
+find /var/www -name "*.php" -exec sed -i 's/old-api\\.com/new-api.com/g' {} \\;
+
+# Find and count occurrences
+find /var/www -name "*.php" -exec grep -o "old-api.com" {} \\; | wc -l
+\`\`\`
+
+### Part 3: Advanced Find Techniques
+
+#### Combining Conditions (Boolean Logic)
+\`\`\`bash
+# AND (default, or explicit -and)
+find /var/log -name "*.log" -size +100M  # Both conditions
+
+# OR
+find /var -name "*.log" -o -name "*.txt"
+
+# NOT
+find /var -not -name "*.log"
+find /var ! -name "*.log"             # Same
+
+# Complex: (A OR B) AND C
+find /var \\( -name "*.log" -o -name "*.txt" \\) -size +10M
+
+# Files modified today but NOT by root
+find /etc -mtime -1 ! -user root
+\`\`\`
+
+#### Using -exec Effectively
+\`\`\`bash
+# {} is replaced with found filename
+find /path -name "*.log" -exec echo "Found: {}" \\;
+
+# {} can appear multiple times
+find /path -name "*.conf" -exec cp {} {}.backup \\;
+
+# -exec vs -exec {} + (batch mode - faster!)
+find /path -name "*.log" -exec rm {} \\;       # Runs rm once per file
+find /path -name "*.log" -exec rm {} +        # Runs rm with multiple args
+
+# Execute shell commands
+find /path -name "*.log" -exec sh -c 'echo "Processing $1"; wc -l "$1"' _ {} \\;
+
+# Confirm before each action
+find /path -name "*.log" -ok rm {} \\;         # Asks y/n for each file
+\`\`\`
+
+#### Using xargs (Better Performance)
+\`\`\`bash
+# Problem: filenames with spaces/newlines
+find /path -name "*.log" | xargs rm            # ❌ Breaks on spaces
+
+# Solution: -print0 and xargs -0
+find /path -name "*.log" -print0 | xargs -0 rm  # ✅ Safe
+
+# Parallel execution with xargs -P
+find /var/log -name "*.log.gz" -print0 | xargs -0 -P 4 gunzip
+
+# Process in batches
+find /data -name "*.txt" -print0 | xargs -0 -n 100 tar -rvf archive.tar
+\`\`\`
+
+#### Optimizing Find Performance
+\`\`\`bash
+# Stop after first match
+find /etc -name "passwd" -quit
+
+# Limit depth (don't recurse too deep)
+find /var -maxdepth 2 -name "*.log"
+find /home -mindepth 2 -maxdepth 3 -name "*.sh"
+
+# Exclude directories
+find / -path /proc -prune -o -name "*.conf" -print
+find / -path /sys -prune -o -path /proc -prune -o -name "*.log" -print
+
+# Use -O for optimization
+find -O3 / -name "*.log"  # Level 1-3
+\`\`\`
+
+### Part 4: Find vs Locate
+
+| Aspect | find | locate |
+|--------|------|--------|
+| Speed | Slow (real-time) | Fast (uses DB) |
+| Accuracy | Always current | Depends on updatedb |
+| Permissions | Sees what you can access | Shows all (if DB built by root) |
+| Disk I/O | High | Low |
+| Use case | Critical/recent files | Quick lookups |
 
 \`\`\`bash
-# 100MB dan katta fayllar
-find / -type f -size +100M 2>/dev/null
+# Locate usage
+updatedb                          # Update DB (run as root)
+locate nginx.conf                 # Find all paths
+locate -i readme                  # Case-insensitive
+locate -c "*.conf"                # Count results
+locate -r '/etc/.*\\.conf$'        # Regex
 
-# Top 10 katta fayllar
-find / -type f -size +50M -exec ls -lh {} \\; 2>/dev/null | sort -k5 -rh | head -10
+# Locate DB is here:
+/var/lib/mlocate/mlocate.db       # or /var/lib/plocate/plocate.db
 \`\`\`
 
-**Scenario 2: Eski log fayllarni tozalash**
+### Common Mistakes to Avoid
 
 \`\`\`bash
-# 30 kundan eski .log fayllar
-find /var/log -name "*.log" -type f -mtime +30
+# ❌ Forgetting quotes (shell expands * before find sees it)
+find /var -name *.log              # Wrong
+find /var -name "*.log"            # Correct
 
-# O'chirish (ehtiyot bo'ling!)
-find /var/log -name "*.log.gz" -type f -mtime +90 -delete
+# ❌ Wrong -exec syntax (missing \\;)
+find /path -exec ls {}             # Wrong
+find /path -exec ls {} \\;          # Correct
+
+# ❌ Deleting without testing first
+find /var -name "*.log" -delete    # Dangerous!
+# Better:
+find /var -name "*.log"            # Review first
+find /var -name "*.log" -delete    # Then delete
+
+# ❌ Not handling stderr (too much noise)
+find / -name "*.conf"              # Permission denied spam
+find / -name "*.conf" 2>/dev/null  # Clean output
+
+# ❌ Using rm in a pipe
+find /path -name "*.log" | rm      # Doesn't work!
+find /path -name "*.log" | xargs rm  # Works
 \`\`\`
 
-**Scenario 3: Security Audit — SUID/SGID**
+### LFCS Exam Tips
+
+**Common tasks you WILL see:**
+
+1. "Find all files larger than 100MB in /var"
+   \`\`\`bash
+   find /var -type f -size +100M 2>/dev/null
+   \`\`\`
+
+2. "Find and delete files older than 30 days in /tmp"
+   \`\`\`bash
+   find /tmp -type f -mtime +30 -delete
+   \`\`\`
+
+3. "Find all SUID files"
+   \`\`\`bash
+   find / -type f -perm -4000 2>/dev/null
+   \`\`\`
+
+4. "Find files changed in last 24 hours in /etc"
+   \`\`\`bash
+   find /etc -type f -mtime -1 2>/dev/null
+   \`\`\`
+
+5. "Find and change ownership of all files in /data"
+   \`\`\`bash
+   find /data -exec chown user:group {} \\;
+   \`\`\`
+
+> **Time-saving trick:** In the exam, use tab completion and history (Ctrl+R) to avoid typos!
+
+### Quick Reference Card
 
 \`\`\`bash
-# SUID bit (4000)
-find / -perm -4000 -type f 2>/dev/null
+# Name
+find / -name "file.txt"
+find / -iname "*.conf"           # Case-insensitive
 
-# SGID bit (2000)
-find / -perm -2000 -type f 2>/dev/null
+# Size
+find / -size +100M               # > 100MB
+find / -size -1k                 # < 1KB
+find / -empty                    # Empty files/dirs
 
-# World-writable files
-find / -perm -0002 -type f 2>/dev/null
+# Time
+find / -mtime -1                 # Last 24h
+find / -mtime +30                # >30 days ago
+find / -mmin -60                 # Last hour
+
+# Type
+find / -type f                   # Files
+find / -type d                   # Directories
+find / -type l                   # Symlinks
+
+# Permissions
+find / -perm 644                 # Exact
+find / -perm -4000               # SUID
+find / -perm -0002               # World-writable
+
+# Owner
+find / -user admin
+find / -group www-data
+find / -nouser                   # Orphaned
+
+# Actions
+find / -name "*.log" -delete
+find / -name "*.conf" -exec cat {} \\;
+find / -name "*.txt" -exec rm {} +
+find / -name "*.log" -print0 | xargs -0 gzip
 \`\`\`
-
-**Scenario 4: Oxirgi o'zgarishlar**
-
-\`\`\`bash
-# Oxirgi 24 soatda o'zgargan fayllar
-find /etc -type f -mtime -1
-
-# Oxirgi 1 soatda
-find /var/log -type f -mmin -60
-\`\`\`
-
-### Find + Exec/Xargs
-
-\`\`\`bash
-# Har bir topilgan fayl uchun buyruq
-find /opt -name "*.conf" -exec cat {} \\;
-
-# Xargs bilan (tezroq)
-find /opt -name "*.conf" | xargs cat
-
-# Xavfsiz variant (space'li nomlar uchun)
-find /opt -name "*.conf" -print0 | xargs -0 cat
-\`\`\`
-
-### Foydali Kombinatsiyalar
-
-| Vazifa | Buyruq |
-|--------|--------|
-| Bo'sh directorylar | \`find . -type d -empty\` |
-| Executable fayllar | \`find . -type f -executable\` |
-| Owner bo'yicha | \`find /home -user admin\` |
-| Group bo'yicha | \`find /data -group developers\` |
-| Permission bo'yicha | \`find . -perm 644\` |
-
-> **LFCS Warning:** Imtihonda \`find\` buyrug'i juda ko'p keladi. \`-exec\` va \`-delete\` ishlatishni yaxshi o'rganing!
         `,
         keyPoints: [
           "find — path, options, expression ketma-ketligida ishlaydi",
@@ -336,93 +954,483 @@ locate -r '/etc/.*\\.conf$'
       },
       {
         id: 5,
-        title: "Grep & Text Processing",
+        title: "Grep & Text Processing — Production Mastery",
         type: "theory",
-        duration: "25 min",
+        duration: "50 min",
         content: `
 ## Grep & Text Processing — Log Analysis Essentials
 
-Production'da log tahlil qilish — kundalik ish. \`grep\`, \`awk\`, \`sed\`, \`cut\`, \`sort\`, \`uniq\` — asosiy qurollaringiz.
+Production'da log analysis — kundalik ish. Har kuni: "Why is the server slow?", "Who accessed this?", "When did this error start?". Javob: \`grep\`, \`awk\`, \`sed\`, \`cut\`, \`sort\`, \`uniq\`.
 
-### Grep — Pattern Matching
+### Part 1: Grep — Pattern Matching Master
 
+#### Basic Grep
 \`\`\`bash
-# Oddiy qidirish
+# Simple search
 grep "error" /var/log/syslog
 
-# Case-insensitive
+# Case-insensitive (90% of the time you want this)
 grep -i "error" /var/log/syslog
 
-# Recursive (directory ichida)
-grep -r "password" /etc/
+# Whole word only (avoid partial matches)
+grep -w "error" /var/log/syslog     # Matches "error", not "errorHandler"
 
-# Line number bilan
-grep -n "failed" /var/log/auth.log
+# Line numbers (debugging)
+grep -n "failed login" /var/log/auth.log
 
-# Invert match (NOT)
-grep -v "INFO" /var/log/app.log
-
-# Count
+# Count matches
 grep -c "ERROR" /var/log/app.log
 
-# Context (atrofdagi qatorlar)
-grep -A 3 -B 2 "error" file.log  # 3 after, 2 before
+# Show only matching part
+grep -o "ERROR" /var/log/app.log | wc -l
+
+# Recursive search in directory
+grep -r "TODO" /var/www/
+grep -r "password" /etc/ 2>/dev/null
+
+# Recursive with specific file types
+grep -r --include="*.php" "mysql_connect" /var/www/
+
+# Exclude directories
+grep -r --exclude-dir={.git,node_modules} "API_KEY" /var/www/
 \`\`\`
 
-### Extended Grep (Regex)
+#### Context (See Surrounding Lines)
+\`\`\`bash
+# Context is CRITICAL for understanding errors
+
+# 3 lines after each match
+grep -A 3 "Exception" app.log
+
+# 2 lines before each match
+grep -B 2 "FATAL" app.log
+
+# 2 before, 3 after (or -C 2 for 2 both sides)
+grep -A 3 -B 2 "error" app.log
+
+# Example: Find error with stacktrace
+grep -A 20 "NullPointerException" catalina.out
+\`\`\`
+
+#### Inverse Match (Show What DOESN'T Match)
+\`\`\`bash
+# Remove INFO/DEBUG noise
+grep -v "INFO" /var/log/app.log
+grep -v -e "INFO" -e "DEBUG" /var/log/app.log
+
+# Multiple excludes
+grep -v "INFO" app.log | grep -v "DEBUG"
+
+# Show all except comments
+grep -v "^#" /etc/nginx/nginx.conf
+
+# Show only errors (exclude INFO, DEBUG, WARN)
+grep -v -E "INFO|DEBUG|WARN" app.log
+\`\`\`
+
+#### Files & Filenames
+\`\`\`bash
+# Show only filenames (not content)
+grep -l "error" /var/log/*.log       # Files WITH match
+grep -L "success" /var/log/*.log     # Files WITHOUT match
+
+# Show filename with each match
+grep -H "error" /var/log/*.log
+
+# Suppress filename (useful with single file)
+grep -h "error" /var/log/syslog
+\`\`\`
+
+### Part 2: Regex — Extended Grep
 
 \`\`\`bash
-# egrep yoki grep -E
-grep -E "error|warning|critical" /var/log/syslog
+# Basic regex (BRE) vs Extended regex (ERE)
+grep "error\\|warning" file.log      # BRE (need escaping)
+grep -E "error|warning" file.log     # ERE (easier)
+egrep "error|warning" file.log       # Same as grep -E
+\`\`\`
 
-# IP address pattern
+#### Common Regex Patterns
+\`\`\`bash
+# IP addresses
 grep -E "([0-9]{1,3}\\.){3}[0-9]{1,3}" access.log
+grep -oE "([0-9]{1,3}\\.){3}[0-9]{1,3}" access.log  # Only IPs
 
-# Email pattern
+# Email addresses
 grep -E "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}" file.txt
+
+# URLs
+grep -E "https?://[a-zA-Z0-9./?=_%:-]*" file.txt
+
+# Credit card (simple - NOT for real validation!)
+grep -E "[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}[- ]?[0-9]{4}" file.txt
+
+# MAC addresses
+grep -E "([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}" file.txt
+
+# Dates (YYYY-MM-DD)
+grep -E "[0-9]{4}-[0-9]{2}-[0-9]{2}" file.txt
+
+# Phone numbers (US format)
+grep -E "\\(?[0-9]{3}\\)?[-. ]?[0-9]{3}[-. ]?[0-9]{4}" file.txt
 \`\`\`
 
-### Awk — Column Processing
-
+#### Regex Anchors & Boundaries
 \`\`\`bash
-# Access log — IP addresses (1st column)
-awk '{print $1}' access.log
+# Start of line
+grep "^error" file.log               # Lines starting with "error"
+grep "^$" file.txt                   # Empty lines
+grep "^#" config.conf                # Comment lines
 
-# Specific columns
-awk '{print $1, $4, $9}' access.log
+# End of line
+grep "failed$" file.log              # Lines ending with "failed"
 
-# Filter by value
-awk '$9 == 500 {print $0}' access.log  # 500 errors
+# Whole line
+grep "^ERROR: Database connection failed$" log.txt
 
+# Word boundary
+grep -w "cat" file.txt               # Matches "cat", not "catalog"
+grep "\\bcat\\b" file.txt             # Same with BRE
+\`\`\`
+
+#### Character Classes
+\`\`\`bash
+# Any digit
+grep "[0-9]" file.txt
+grep "[[:digit:]]" file.txt
+
+# Any letter
+grep "[a-zA-Z]" file.txt
+grep "[[:alpha:]]" file.txt
+
+# Alphanumeric
+grep "[[:alnum:]]" file.txt
+
+# Whitespace
+grep "[[:space:]]" file.txt
+
+# Negation
+grep "[^0-9]" file.txt               # NOT a digit
+\`\`\`
+
+### Part 3: Real Production Scenarios
+
+#### Scenario 1: Web Server Attack Detection
+\`\`\`bash
+# Find SQL injection attempts
+grep -i "union.*select\\|drop.*table\\|/etc/passwd" /var/log/nginx/access.log
+
+# Find XSS attempts
+grep -i "<script" /var/log/nginx/access.log
+
+# Find admin panel brute force
+grep "POST /admin/login" /var/log/nginx/access.log | \\
+  awk '{print $1}' | sort | uniq -c | sort -rn
+
+# Suspicious user agents
+grep -i "bot\\|scanner\\|crawler\\|spider" access.log | grep -v -i "googlebot"
+
+# Find 404 errors (might be probing for vulnerabilities)
+grep '" 404 ' /var/log/nginx/access.log | awk '{print $7}' | sort | uniq -c | sort -rn
+\`\`\`
+
+#### Scenario 2: Application Error Analysis
+\`\`\`bash
+# Count errors by type
+grep -oE "(NullPointerException|SQLException|IOException)" app.log | \\
+  sort | uniq -c | sort -rn
+
+# Find when errors started
+grep "Exception" app.log | head -1
+
+# Error frequency over time
+grep "ERROR" app.log | awk '{print $1, $2}' | cut -d: -f1 | uniq -c
+
+# Find specific user's errors
+grep "userId=12345" app.log | grep "ERROR"
+
+# Errors with stack traces (with context)
+grep -A 50 "Exception" app.log > /tmp/exceptions.txt
+\`\`\`
+
+#### Scenario 3: Performance Issues
+\`\`\`bash
+# Find slow queries (>1000ms)
+grep "Query took" /var/log/mysql/slow.log | \\
+  awk -F'took ' '{print $2}' | awk '{if($1>1000) print}' | wc -l
+
+# Find high memory usage events
+grep -i "out of memory\\|oom" /var/log/syslog
+
+# Find disk full warnings
+grep -i "no space left\\|disk full" /var/log/syslog
+
+# Find segfaults (crashes)
+grep "segfault" /var/log/syslog
+\`\`\`
+
+### Part 4: Awk — The Ultimate Text Processor
+
+#### Awk Basics
+\`\`\`bash
+# Print specific columns
+awk '{print $1}' file.txt            # 1st column
+awk '{print $1, $3}' file.txt        # 1st and 3rd
+awk '{print $NF}' file.txt           # Last column
+awk '{print $(NF-1)}' file.txt       # Second-to-last
+
+# Default delimiter is whitespace; change with -F
+awk -F':' '{print $1}' /etc/passwd   # Username
+awk -F',' '{print $2}' data.csv      # 2nd column of CSV
+\`\`\`
+
+#### Awk Conditionals & Filters
+\`\`\`bash
+# Print lines where column 3 > 100
+awk '$3 > 100' data.txt
+
+# HTTP 500 errors from access log
+awk '$9 == 500' /var/log/nginx/access.log
+
+# Multiple conditions (AND)
+awk '$9 >= 400 && $10 > 0' access.log
+
+# OR condition
+awk '$9 == 404 || $9 == 500' access.log
+
+# Pattern matching
+awk '/error/ {print $0}' file.log    # Like grep "error"
+awk '$1 ~ /^192\\.168/ {print $1}' access.log  # Regex match
+\`\`\`
+
+#### Awk Aggregation & Math
+\`\`\`bash
 # Sum column
-awk '{sum += $5} END {print sum}' data.txt
+awk '{sum += $3} END {print sum}' data.txt
+
+# Average
+awk '{sum += $3; count++} END {print sum/count}' data.txt
+
+# Count rows
+awk 'END {print NR}' file.txt        # Same as wc -l
+
+# Find max value
+awk 'max < $3 {max = $3} END {print max}' data.txt
+
+# Total bytes transferred (from access log)
+awk '{sum += $10} END {print sum/1024/1024 " MB"}' access.log
 \`\`\`
 
-### Real Production Pipeline
-
+#### Real Awk Examples
 \`\`\`bash
-# Top 10 IP addresses by request count
-awk '{print $1}' /var/log/nginx/access.log | sort | uniq -c | sort -rn | head -10
+# Top 10 IPs by request count
+awk '{print $1}' access.log | sort | uniq -c | sort -rn | head -10
 
-# 500 errorlar qaysi URL'larda
-grep '" 500 ' access.log | awk '{print $7}' | sort | uniq -c | sort -rn
+# Top requested URLs
+awk '{print $7}' access.log | sort | uniq -c | sort -rn | head -10
 
-# Oxirgi 1000 qator, faqat ERROR
-tail -1000 /var/log/app.log | grep -i error
+# HTTP status code distribution
+awk '{print $9}' access.log | sort | uniq -c | sort -rn
 
-# Vaqt oralig'ida qidirish
-awk '/10:00:00/,/11:00:00/' /var/log/syslog
+# Response time analysis (if logged)
+awk '{print $NF}' access.log | awk '{sum+=$1; count++} END {print "Avg:", sum/count "ms"}'
+
+# Bandwidth by IP
+awk '{ip[$1]+=$10} END {for (i in ip) print i, ip[i]/1024/1024 "MB"}' access.log | sort -k2 -rn
+
+# Requests per hour
+awk '{print $4}' access.log | cut -d: -f2 | sort | uniq -c
+
+# Time range filter
+awk -F'[: \\[]' '$5>=10 && $5<=14 {print $0}' access.log  # Between 10:00-14:00
 \`\`\`
 
-### Cut & Sed
+### Part 5: Sed — Stream Editor
+
+#### Basic Sed Replacements
+\`\`\`bash
+# Replace first occurrence on each line
+sed 's/old/new/' file.txt
+
+# Replace ALL occurrences (global)
+sed 's/old/new/g' file.txt
+
+# Case-insensitive replace
+sed 's/old/new/gi' file.txt
+
+# In-place edit (DANGEROUS - backup first!)
+sed -i 's/old/new/g' file.txt
+
+# In-place with backup
+sed -i.bak 's/old/new/g' file.txt    # Creates file.txt.bak
+\`\`\`
+
+#### Sed Line Operations
+\`\`\`bash
+# Delete lines
+sed '/pattern/d' file.txt            # Delete matching lines
+sed '1d' file.txt                    # Delete 1st line
+sed '$d' file.txt                    # Delete last line
+sed '1,5d' file.txt                  # Delete lines 1-5
+
+# Print specific lines
+sed -n '10p' file.txt                # Print line 10
+sed -n '10,20p' file.txt             # Print lines 10-20
+sed -n '/error/p' file.txt           # Print matching lines (like grep)
+
+# Insert/Append
+sed '5i\\This is inserted' file.txt   # Insert before line 5
+sed '5a\\This is appended' file.txt   # Append after line 5
+\`\`\`
+
+#### Real Sed Use Cases
+\`\`\`bash
+# Remove comments and empty lines
+sed -e 's/#.*//' -e '/^$/d' config.conf
+
+# Extract IP from config
+sed -n 's/.*IP=\\([0-9.]*\\).*/\\1/p' config.txt
+
+# Change config value
+sed -i 's/^port=.*/port=8080/' config.conf
+
+# Add line after match
+sed '/^\\[database\\]/a host=localhost' config.ini
+
+# Multiple replacements
+sed -e 's/foo/bar/g' -e 's/hello/world/g' file.txt
+\`\`\`
+
+### Part 6: Cut, Sort, Uniq Pipeline
+
+#### Cut — Column Extraction
+\`\`\`bash
+# Cut by delimiter
+cut -d':' -f1 /etc/passwd            # Usernames
+cut -d':' -f1,7 /etc/passwd          # Username & shell
+cut -d',' -f2-5 data.csv             # Columns 2-5
+
+# Cut by character position
+cut -c1-10 file.txt                  # First 10 chars
+\`\`\`
+
+#### Sort — Ordering
+\`\`\`bash
+# Alphabetical sort
+sort file.txt
+
+# Reverse sort
+sort -r file.txt
+
+# Numeric sort (IMPORTANT!)
+sort -n numbers.txt                  # 1, 2, 10, 20 (correct)
+# Without -n: 1, 10, 2, 20 (wrong!)
+
+# Sort by column
+sort -k2 file.txt                    # 2nd column
+sort -k2,2 file.txt                  # Only 2nd column (faster)
+
+# Numeric + reverse
+sort -rn numbers.txt
+
+# Human-readable sizes
+du -h /var/* | sort -rh              # Sorts 1K, 1M, 1G correctly
+
+# Sort CSV by column
+sort -t',' -k3 -rn data.csv          # 3rd column, numeric, reverse
+
+# Unique while sorting
+sort -u file.txt                     # Same as sort | uniq
+\`\`\`
+
+#### Uniq — Remove Duplicates
+\`\`\`bash
+# Remove adjacent duplicates (MUST sort first!)
+sort file.txt | uniq
+
+# Count occurrences
+sort file.txt | uniq -c
+
+# Sort by frequency
+sort file.txt | uniq -c | sort -rn
+
+# Show only duplicates
+sort file.txt | uniq -d
+
+# Show only unique (no duplicates)
+sort file.txt | uniq -u
+\`\`\`
+
+### Part 7: Production Pipeline Examples
+
+#### Example 1: Top Talkers (Most Active IPs)
+\`\`\`bash
+awk '{print $1}' /var/log/nginx/access.log | \\
+  sort | \\
+  uniq -c | \\
+  sort -rn | \\
+  head -20 | \\
+  awk '{print $2 "\\t" $1 " requests"}'
+\`\`\`
+
+#### Example 2: Error Rate Over Time
+\`\`\`bash
+grep "ERROR" /var/log/app.log | \\
+  awk '{print $1, $2}' | \\
+  cut -d: -f1-2 | \\
+  sort | \\
+  uniq -c | \\
+  awk '{print $2, $3 "\\t" $1 " errors"}'
+\`\`\`
+
+#### Example 3: Find Slow Endpoints
+\`\`\`bash
+# Access log format: ... "GET /api/users" ... response_time
+awk '{print $7, $NF}' access.log | \\
+  awk '{total[$1]+=$2; count[$1]++} END {for (url in total) print url, total[url]/count[url]}' | \\
+  sort -k2 -rn | \\
+  head -10
+\`\`\`
+
+#### Example 4: Failed SSH Login Attempts
+\`\`\`bash
+grep "Failed password" /var/log/auth.log | \\
+  awk '{print $(NF-3)}' | \\
+  sort | \\
+  uniq -c | \\
+  sort -rn | \\
+  awk '$1 >= 5 {print $2 "\\t" $1 " failed attempts - BLOCK!"}'
+\`\`\`
+
+### Quick Reference Card
 
 \`\`\`bash
-# Cut — delimiter bilan
-cut -d':' -f1 /etc/passwd  # Usernames
+# Grep
+grep -i "pattern" file               # Case-insensitive
+grep -r "pattern" /path              # Recursive
+grep -v "pattern" file               # Inverse (NOT)
+grep -E "p1|p2" file                 # Regex OR
+grep -A 5 "pattern" file             # 5 lines After
+grep -B 3 "pattern" file             # 3 lines Before
 
-# Sed — replace
-sed 's/old/new/g' file.txt  # Global replace
-sed -i 's/old/new/g' file.txt  # In-place edit
+# Awk
+awk '{print $1, $3}' file            # Columns 1 & 3
+awk -F':' '{print $1}' file          # Custom delimiter
+awk '$3 > 100' file                  # Filter by condition
+awk '{sum+=$1} END {print sum}' file # Sum column
+
+# Sed
+sed 's/old/new/g' file               # Replace all
+sed -i 's/old/new/g' file            # In-place edit
+sed '/pattern/d' file                # Delete matching lines
+sed -n '10,20p' file                 # Print lines 10-20
+
+# Sort, Uniq
+sort -rn file                        # Reverse numeric sort
+sort file | uniq -c | sort -rn       # Frequency count
+
+# Pipeline
+... | sort | uniq -c | sort -rn | head -10
 \`\`\`
         `,
         keyPoints: [
@@ -2200,7 +3208,140 @@ timedatectl
     duration: "5-6 soat",
     difficulty: "Advanced",
     examWeight: "7%",
-    lessons: []
+    lessons: [
+      {
+        id: 1,
+        title: "SELinux Fundamentals",
+        type: "theory",
+        duration: "30 min",
+        content: `
+## SELinux — Security Enhanced Linux
+
+### Modes
+
+\`\`\`bash
+# Check status
+getenforce
+sestatus
+
+# Modes:
+# - Enforcing: blocks and logs
+# - Permissive: logs only
+# - Disabled: completely off
+
+# Temporary change
+setenforce 0    # permissive
+setenforce 1    # enforcing
+
+# Permanent: /etc/selinux/config
+SELINUX=enforcing
+\`\`\`
+
+### Contexts
+
+\`\`\`bash
+# View context
+ls -Z /var/www/html
+ps auxZ | grep httpd
+
+# Context format: user:role:type:level
+# system_u:object_r:httpd_sys_content_t:s0
+
+# Change context
+chcon -t httpd_sys_content_t /var/www/html/index.html
+
+# Restore default
+restorecon -Rv /var/www/html
+\`\`\`
+
+### Booleans
+
+\`\`\`bash
+# List booleans
+getsebool -a | grep httpd
+
+# Set boolean (temporary)
+setsebool httpd_can_network_connect on
+
+# Set boolean (persistent)
+setsebool -P httpd_can_network_connect on
+\`\`\`
+
+### Troubleshooting
+
+\`\`\`bash
+# View denials
+ausearch -m avc -ts recent
+grep denied /var/log/audit/audit.log
+
+# Generate policy
+audit2why < /var/log/audit/audit.log
+\`\`\`
+        `,
+        keyPoints: [
+          "getenforce/setenforce — status va mode",
+          "chcon — context o'zgartirish",
+          "restorecon — default context",
+          "setsebool -P — persistent boolean"
+        ]
+      },
+      {
+        id: 2,
+        title: "SSH Hardening",
+        type: "lab",
+        duration: "35 min",
+        content: `
+## SSH Security Configuration
+
+### /etc/ssh/sshd_config
+
+\`\`\`bash
+# Disable root login
+PermitRootLogin no
+
+# Disable password auth
+PasswordAuthentication no
+PubkeyAuthentication yes
+
+# Limit users
+AllowUsers admin deploy
+AllowGroups sshusers
+
+# Change port
+Port 2222
+
+# Idle timeout
+ClientAliveInterval 300
+ClientAliveCountMax 2
+\`\`\`
+
+### SSH Keys
+
+\`\`\`bash
+# Generate key
+ssh-keygen -t ed25519 -C "user@example.com"
+
+# Copy to server
+ssh-copy-id user@server
+
+# Permissions
+chmod 700 ~/.ssh
+chmod 600 ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/id_ed25519
+\`\`\`
+
+### Apply changes
+\`\`\`bash
+systemctl restart sshd
+\`\`\`
+        `,
+        commands: [
+          { cmd: "ssh-keygen -t ed25519", desc: "Generate SSH key" },
+          { cmd: "ssh-copy-id user@server", desc: "Copy key to server" },
+          { cmd: "systemctl restart sshd", desc: "Restart SSH" }
+        ]
+      }
+    ]
   },
   {
     id: 9,
@@ -2211,7 +3352,163 @@ timedatectl
     duration: "4-5 soat",
     difficulty: "Intermediate",
     examWeight: "5%",
-    lessons: []
+    lessons: [
+      {
+        id: 1,
+        title: "Bash Basics",
+        type: "theory",
+        duration: "25 min",
+        content: `
+## Bash Scripting Fundamentals
+
+### Script Structure
+
+\`\`\`bash
+#!/bin/bash
+# Script description
+
+# Variables
+NAME="World"
+echo "Hello, $NAME!"
+
+# Command substitution
+DATE=$(date +%Y-%m-%d)
+FILES=\`ls -la\`
+
+# Arguments
+echo "Script: $0"
+echo "First arg: $1"
+echo "All args: $@"
+echo "Arg count: $#"
+\`\`\`
+
+### Conditions
+
+\`\`\`bash
+# if-else
+if [ -f "/etc/passwd" ]; then
+    echo "File exists"
+elif [ -d "/etc" ]; then
+    echo "Directory exists"
+else
+    echo "Not found"
+fi
+
+# Numeric comparison
+if [ $NUM -eq 10 ]; then echo "Equal"; fi
+if [ $NUM -gt 5 ]; then echo "Greater"; fi
+if [ $NUM -lt 20 ]; then echo "Less"; fi
+
+# String comparison
+if [ "$STR" = "hello" ]; then echo "Match"; fi
+if [ -z "$STR" ]; then echo "Empty"; fi
+if [ -n "$STR" ]; then echo "Not empty"; fi
+\`\`\`
+
+### Loops
+
+\`\`\`bash
+# For loop
+for i in 1 2 3 4 5; do
+    echo "Number: $i"
+done
+
+for file in /etc/*.conf; do
+    echo "Config: $file"
+done
+
+# While loop
+count=0
+while [ $count -lt 5 ]; do
+    echo "Count: $count"
+    ((count++))
+done
+
+# Read file line by line
+while read line; do
+    echo "$line"
+done < /etc/passwd
+\`\`\`
+        `,
+        keyPoints: [
+          "#!/bin/bash — shebang",
+          "$1, $2, $@ — script arguments",
+          "[ -f file ] — file exists check",
+          "for/while — loops"
+        ]
+      },
+      {
+        id: 2,
+        title: "Practical Scripts",
+        type: "lab",
+        duration: "40 min",
+        content: `
+## Real-World Scripts
+
+### Backup Script
+
+\`\`\`bash
+#!/bin/bash
+# Backup script
+
+BACKUP_DIR="/backup"
+SOURCE="/var/www/html"
+DATE=$(date +%Y%m%d_%H%M%S)
+ARCHIVE="$BACKUP_DIR/web_backup_$DATE.tar.gz"
+
+# Create backup
+tar -czvf "$ARCHIVE" "$SOURCE"
+
+# Keep only last 7 backups
+find "$BACKUP_DIR" -name "web_backup_*.tar.gz" -mtime +7 -delete
+
+echo "Backup completed: $ARCHIVE"
+\`\`\`
+
+### Log Monitor Script
+
+\`\`\`bash
+#!/bin/bash
+# Monitor log for errors
+
+LOG_FILE="/var/log/syslog"
+ALERT_EMAIL="admin@example.com"
+
+tail -F "$LOG_FILE" | while read line; do
+    if echo "$line" | grep -qi "error"; then
+        echo "$line" | mail -s "Error Alert" "$ALERT_EMAIL"
+    fi
+done
+\`\`\`
+
+### System Health Check
+
+\`\`\`bash
+#!/bin/bash
+
+echo "=== System Health Check ==="
+echo "Date: $(date)"
+echo ""
+echo "=== Disk Usage ==="
+df -h | grep -E '^/dev'
+echo ""
+echo "=== Memory ==="
+free -h
+echo ""
+echo "=== Load Average ==="
+uptime
+echo ""
+echo "=== Top 5 CPU Processes ==="
+ps aux --sort=-%cpu | head -6
+\`\`\`
+        `,
+        commands: [
+          { cmd: "chmod +x script.sh", desc: "Make script executable" },
+          { cmd: "./script.sh arg1 arg2", desc: "Run script with args" },
+          { cmd: "bash -x script.sh", desc: "Debug mode" }
+        ]
+      }
+    ]
   },
   {
     id: 10,
@@ -2222,7 +3519,126 @@ timedatectl
     duration: "3-4 soat",
     difficulty: "Intermediate",
     examWeight: "5%",
-    lessons: []
+    lessons: [
+      {
+        id: 1,
+        title: "Backup Strategies",
+        type: "theory",
+        duration: "25 min",
+        content: `
+## Backup Strategies
+
+### Backup Types
+
+| Type | Description | Use Case |
+|------|-------------|----------|
+| Full | Complete copy | Weekly |
+| Incremental | Changes since last backup | Daily |
+| Differential | Changes since last full | Daily |
+
+### rsync — Efficient Copying
+
+\`\`\`bash
+# Basic sync
+rsync -av /source/ /destination/
+
+# Remote sync
+rsync -avz /local/ user@server:/remote/
+
+# With delete (mirror)
+rsync -av --delete /source/ /destination/
+
+# Exclude patterns
+rsync -av --exclude='*.log' --exclude='cache/' /source/ /dest/
+
+# Dry run
+rsync -avn /source/ /destination/
+\`\`\`
+
+### tar — Archive Backup
+
+\`\`\`bash
+# Create backup
+tar -czvf backup.tar.gz /data
+
+# Incremental backup
+tar -czvf backup.tar.gz --newer-mtime="2024-01-01" /data
+
+# Restore
+tar -xzvf backup.tar.gz -C /restore/
+\`\`\`
+
+### Cron Backup Jobs
+
+\`\`\`bash
+# /etc/crontab
+# Daily backup at 2 AM
+0 2 * * * root /usr/local/bin/backup.sh
+
+# Weekly full backup on Sunday
+0 3 * * 0 root /usr/local/bin/full-backup.sh
+\`\`\`
+        `,
+        keyPoints: [
+          "rsync -av — archive mode with verbose",
+          "--delete — mirror source to destination",
+          "tar -czvf — create gzipped archive",
+          "cron — scheduled backups"
+        ]
+      },
+      {
+        id: 2,
+        title: "Recovery Procedures",
+        type: "lab",
+        duration: "30 min",
+        content: `
+## System Recovery
+
+### Bootloader Recovery (GRUB)
+
+\`\`\`bash
+# Boot from live CD, then:
+mount /dev/sda1 /mnt
+mount --bind /dev /mnt/dev
+mount --bind /proc /mnt/proc
+mount --bind /sys /mnt/sys
+chroot /mnt
+
+# Reinstall GRUB
+grub2-install /dev/sda
+grub2-mkconfig -o /boot/grub2/grub.cfg
+\`\`\`
+
+### Rescue Mode
+
+\`\`\`bash
+# Boot to rescue mode
+systemctl rescue
+
+# Or from GRUB:
+# Add 'single' or 'init=/bin/bash' to kernel line
+\`\`\`
+
+### Password Recovery
+
+\`\`\`bash
+# Boot to single user mode
+# Mount filesystem read-write
+mount -o remount,rw /
+
+# Change password
+passwd root
+
+# Reboot
+reboot
+\`\`\`
+        `,
+        commands: [
+          { cmd: "rsync -avz /data/ /backup/", desc: "Sync data to backup" },
+          { cmd: "tar -xzvf backup.tar.gz -C /restore/", desc: "Restore from archive" }
+        ]
+      }
+    ]
   },
   {
     id: 11,
@@ -2233,7 +3649,169 @@ timedatectl
     duration: "4-5 soat",
     difficulty: "Intermediate",
     examWeight: "5%",
-    lessons: []
+    lessons: [
+      {
+        id: 1,
+        title: "Container Basics",
+        type: "theory",
+        duration: "30 min",
+        content: `
+## Containers — Docker/Podman
+
+### Basic Commands
+
+\`\`\`bash
+# Run container
+docker run hello-world
+docker run -d -p 80:80 nginx
+docker run -it ubuntu bash
+
+# List containers
+docker ps           # running
+docker ps -a        # all
+
+# Stop/Start/Remove
+docker stop container_id
+docker start container_id
+docker rm container_id
+
+# Logs
+docker logs container_id
+docker logs -f container_id
+\`\`\`
+
+### Images
+
+\`\`\`bash
+# List images
+docker images
+
+# Pull image
+docker pull nginx:latest
+
+# Build image
+docker build -t myapp:1.0 .
+
+# Remove image
+docker rmi image_id
+\`\`\`
+
+### Volumes
+
+\`\`\`bash
+# Create volume
+docker volume create mydata
+
+# Mount volume
+docker run -v mydata:/data nginx
+
+# Bind mount
+docker run -v /host/path:/container/path nginx
+
+# List volumes
+docker volume ls
+\`\`\`
+
+### Podman (Docker alternative)
+
+\`\`\`bash
+# Same commands as Docker
+podman run -d nginx
+podman ps
+podman images
+
+# Rootless containers
+podman run --user 1000 nginx
+\`\`\`
+        `,
+        keyPoints: [
+          "docker run -d — detached mode",
+          "-p host:container — port mapping",
+          "-v host:container — volume mount",
+          "podman — rootless alternative"
+        ]
+      },
+      {
+        id: 2,
+        title: "Dockerfile & Compose",
+        type: "lab",
+        duration: "35 min",
+        content: `
+## Building Custom Images
+
+### Dockerfile
+
+\`\`\`dockerfile
+FROM ubuntu:22.04
+
+# Metadata
+LABEL maintainer="admin@example.com"
+
+# Install packages
+RUN apt-get update && apt-get install -y \\
+    nginx \\
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy files
+COPY index.html /var/www/html/
+
+# Expose port
+EXPOSE 80
+
+# Start command
+CMD ["nginx", "-g", "daemon off;"]
+\`\`\`
+
+### Build & Run
+
+\`\`\`bash
+# Build
+docker build -t mywebapp:1.0 .
+
+# Run
+docker run -d -p 8080:80 mywebapp:1.0
+\`\`\`
+
+### Docker Compose
+
+\`\`\`yaml
+# docker-compose.yml
+services:
+  web:
+    build: .
+    ports:
+      - "80:80"
+    volumes:
+      - ./html:/var/www/html
+    depends_on:
+      - db
+  db:
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: secret
+    volumes:
+      - db_data:/var/lib/mysql
+
+volumes:
+  db_data:
+\`\`\`
+
+### Compose Commands
+
+\`\`\`bash
+docker compose up -d
+docker compose down
+docker compose logs
+docker compose ps
+\`\`\`
+        `,
+        commands: [
+          { cmd: "docker build -t myapp .", desc: "Build image" },
+          { cmd: "docker compose up -d", desc: "Start compose stack" },
+          { cmd: "docker compose logs -f", desc: "Follow logs" }
+        ]
+      }
+    ]
   },
   {
     id: 12,
@@ -2244,7 +3822,70 @@ timedatectl
     duration: "2 soat",
     difficulty: "Exam",
     examWeight: "100%",
-    lessons: []
+    lessons: [
+      {
+        id: 1,
+        title: "Exam Overview",
+        type: "theory",
+        duration: "15 min",
+        content: `
+## LFCS Exam Information
+
+### Exam Format
+
+| Aspect | Detail |
+|--------|--------|
+| Duration | 2 hours |
+| Questions | 20-25 performance-based tasks |
+| Passing Score | 66% |
+| Environment | Command line only |
+| Resources | man pages allowed |
+
+### Exam Domains
+
+| Domain | Weight |
+|--------|--------|
+| Essential Commands | 25% |
+| Operation of Running Systems | 20% |
+| User and Group Management | 10% |
+| Networking | 12% |
+| Service Configuration | 20% |
+| Storage Management | 13% |
+
+### Tips
+
+- **Read carefully** — har bir task to'liq o'qing
+- **man pages** — buyruqlar uchun man ishlatish mumkin
+- **Time management** — 2 soat, ~5 min per task
+- **Verify** — har bir task bajarilganini tekshiring
+- **Don't panic** — bilmaganingizni o'tkazib keting
+        `,
+        keyPoints: [
+          "2 soat, 20-25 task",
+          "66% passing score",
+          "man pages ruxsat etilgan",
+          "Performance-based (real terminal)"
+        ]
+      },
+      {
+        id: 2,
+        title: "Start Practice Exam",
+        type: "exam",
+        duration: "120 min",
+        content: `
+## Practice Exam
+
+Exam sahifasiga o'tish uchun sidebar'dagi **LFCS Exam** tugmasini bosing.
+
+Practice exam xususiyatlari:
+- Real LFCS formatidagi tasklar
+- 2 soatlik timer
+- Hints va solutions
+- Progress tracking
+        `,
+        tasks: []
+      }
+    ]
   }
 ];
 
