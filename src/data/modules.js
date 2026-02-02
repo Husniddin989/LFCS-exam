@@ -1532,6 +1532,392 @@ cat /tmp/security_report.txt
       },
       {
         id: 7,
+        title: "I/O Redirection & Pipes Mastery",
+        type: "theory",
+        duration: "30 min",
+        content: `
+## I/O Redirection & Pipes — Advanced Shell Techniques
+
+Every process in Linux has 3 standard streams: STDIN (0), STDOUT (1), STDERR (2). Mastering redirection is essential for automation, logging, and debugging.
+
+### Part 1: Basic Redirection
+
+#### Output Redirection
+\`\`\`bash
+# Redirect STDOUT to file (overwrite)
+echo "Hello" > file.txt
+ls -la > directory_listing.txt
+
+# Redirect STDOUT to file (append)
+echo "New line" >> file.txt
+date >> log.txt
+
+# Redirect STDERR to file
+command_that_fails 2> errors.txt
+find / -name "*.conf" 2> /dev/null  # Hide permission denied
+
+# Redirect both STDOUT and STDERR
+command > output.txt 2>&1           # Method 1 (traditional)
+command &> output.txt               # Method 2 (bash 4+)
+command > output.txt 2> errors.txt  # Separate files
+
+# Append both
+command >> output.txt 2>&1
+\`\`\`
+
+#### Input Redirection
+\`\`\`bash
+# Read from file instead of keyboard
+mysql -u root -p < database_dump.sql
+sort < unsorted.txt
+wc -l < file.txt
+
+# Here document (multi-line input)
+cat << EOF > config.txt
+server {
+    listen 80;
+    server_name example.com;
+}
+EOF
+
+# Here string (single line)
+grep "error" <<< "This is an error message"
+base64 <<< "encode this"
+\`\`\`
+
+### Part 2: Advanced Redirection
+
+#### File Descriptors
+\`\`\`bash
+# List open file descriptors
+ls -la /proc/$$/fd/
+
+# 0 = STDIN, 1 = STDOUT, 2 = STDERR
+
+# Redirect only STDERR
+ls /nonexistent 2> errors.log
+
+# Redirect STDERR to STDOUT
+ls /home /fake 2>&1 | grep "No such"
+
+# Swap STDOUT and STDERR
+command 3>&1 1>&2 2>&3
+
+# Close file descriptor
+exec 3>&-
+\`\`\`
+
+#### Multiple Redirections
+\`\`\`bash
+# Save both output and errors, separately
+command 1> output.log 2> error.log
+
+# Save output, show errors
+command > output.log 2>&1 | tee error.log
+
+# Discard errors, keep output
+command 2>/dev/null
+
+# Discard output, keep errors
+command 1>/dev/null
+
+# Discard everything
+command &>/dev/null
+command > /dev/null 2>&1
+\`\`\`
+
+### Part 3: Pipes — The Power of Combination
+
+#### Basic Pipes
+\`\`\`bash
+# Output of cmd1 becomes input of cmd2
+cmd1 | cmd2
+
+# Multiple pipes
+ps aux | grep nginx | grep -v grep | awk '{print $2}'
+
+# Pipe with redirection
+ls -la | grep "^d" > directories.txt
+\`\`\`
+
+#### Pipe to Multiple Commands
+\`\`\`bash
+# tee — write to file AND pipe
+ls -la | tee listing.txt | grep "^d"
+
+# tee to multiple files
+echo "Important" | tee file1.txt file2.txt file3.txt
+
+# tee with append
+date | tee -a log.txt
+
+# Split output to multiple destinations
+ps aux | tee >(grep nginx > nginx.txt) >(grep mysql > mysql.txt) > all.txt
+\`\`\`
+
+### Part 4: Process Substitution (Advanced)
+
+\`\`\`bash
+# <(command) — treat command output as a file
+
+# Compare two command outputs
+diff <(ls /dir1) <(ls /dir2)
+
+# Multiple inputs
+paste <(cat file1) <(cat file2)
+
+# Use with commands that expect files
+grep -f <(echo "pattern1\\npattern2") file.txt
+
+# >(command) — write to command as if it's a file
+echo "data" > >(gzip > output.gz)
+\`\`\`
+
+### Part 5: Real Production Examples
+
+#### Example 1: Logging Best Practices
+\`\`\`bash
+# Log both output and errors with timestamps
+./deploy.sh > >(ts '%Y-%m-%d %H:%M:%.S' >> deploy.log) 2>&1
+
+# Separate success and error logs
+./script.sh 1>> success.log 2>> error.log
+
+# Log to file and show on screen
+./script.sh 2>&1 | tee -a script.log
+
+# Rotate logs automatically
+./long_running.sh >> app.log 2>&1 &
+# Use logrotate for production
+\`\`\`
+
+#### Example 2: Silent Background Jobs
+\`\`\`bash
+# Run in background, discard all output
+long_task &>/dev/null &
+
+# Run in background, save output
+nohup long_task > output.log 2>&1 &
+
+# Run and forget
+setsid long_task &>/dev/null < /dev/null &
+\`\`\`
+
+#### Example 3: Error Handling in Scripts
+\`\`\`bash
+#!/bin/bash
+
+# Fail on error
+set -e
+
+# Log everything
+exec 1> >(tee -a script.log)
+exec 2> >(tee -a script.log >&2)
+
+echo "Starting backup..."
+tar -czf backup.tar.gz /data 2>&1 | tee backup.log
+
+if [ ${PIPESTATUS[0]} -eq 0 ]; then
+    echo "Backup successful"
+else
+    echo "Backup failed!" >&2
+    exit 1
+fi
+\`\`\`
+
+#### Example 4: Monitoring & Alerting
+\`\`\`bash
+# Monitor error log, send alert on critical
+tail -f /var/log/app.log | grep --line-buffered "CRITICAL" | \\
+  while read line; do
+    echo "$line" | mail -s "CRITICAL ERROR" admin@example.com
+  done &
+
+# Check if process produces errors
+if ! command 2>&1 | grep -q "success"; then
+    echo "Command failed!" >&2
+    exit 1
+fi
+\`\`\`
+
+### Part 6: Named Pipes (FIFO)
+
+\`\`\`bash
+# Create named pipe
+mkfifo /tmp/mypipe
+
+# Terminal 1: Write to pipe
+echo "Hello from process 1" > /tmp/mypipe &
+
+# Terminal 2: Read from pipe
+cat < /tmp/mypipe
+
+# Use case: IPC (Inter-Process Communication)
+mkfifo /tmp/data_pipe
+
+# Producer
+while true; do
+    date >> /tmp/data_pipe
+    sleep 1
+done &
+
+# Consumer
+while read line; do
+    echo "Received: $line"
+done < /tmp/data_pipe
+\`\`\`
+
+### Common Patterns & Idioms
+
+\`\`\`bash
+# 1. Null out a file (without deleting)
+> /var/log/large.log
+# or
+cat /dev/null > /var/log/large.log
+
+# 2. Suppress all output
+command &>/dev/null
+
+# 3. Show output AND save to file
+command 2>&1 | tee output.log
+
+# 4. Redirect both, keep separate
+command 1>out.log 2>err.log
+
+# 5. Append timestamp to every line
+command | ts '[%Y-%m-%d %H:%M:%S]'
+
+# 6. Filter errors only
+command 2>&1 >/dev/null | grep "ERROR"
+
+# 7. Run command, ignore errors
+command 2>/dev/null || true
+
+# 8. Capture output in variable
+output=$(command 2>&1)
+
+# 9. Test if command succeeds
+if command &>/dev/null; then
+    echo "Success"
+fi
+
+# 10. Multi-line command with here-doc
+mysql -u root -p <<SQL
+USE mydb;
+SELECT * FROM users;
+SQL
+\`\`\`
+
+### PIPESTATUS & Exit Codes
+
+\`\`\`bash
+# Problem: In a pipeline, $? only shows last command's exit code
+false | true
+echo $?  # Shows 0 (from 'true')
+
+# Solution: Use PIPESTATUS array
+false | true
+echo ${PIPESTATUS[0]}  # Shows 1 (from 'false')
+echo ${PIPESTATUS[1]}  # Shows 0 (from 'true')
+
+# Check if ANY command in pipeline failed
+command1 | command2 | command3
+if [ ${PIPESTATUS[0]} -ne 0 ]; then
+    echo "command1 failed"
+fi
+
+# Production example: Backup validation
+tar -czf backup.tar.gz /data | gpg --encrypt > backup.tar.gz.gpg
+if [ ${PIPESTATUS[0]} -eq 0 ] && [ ${PIPESTATUS[1]} -eq 0 ]; then
+    echo "Backup encrypted successfully"
+else
+    echo "Backup or encryption failed!" >&2
+fi
+\`\`\`
+
+### Debugging Redirection
+
+\`\`\`bash
+# Enable command tracing
+set -x
+
+# Trace to file
+exec 2> debug.log
+set -x
+
+# Verbose mode
+set -v
+
+# Both
+set -xv
+
+# See what's open
+lsof -p $$
+ls -la /proc/$$/fd/
+
+# Find redirections in script
+grep -E '>[^>]|2>&1|2>/|&>' script.sh
+\`\`\`
+
+### Best Practices
+
+1. **Always handle errors:**
+   \`\`\`bash
+   command 2>&1 | tee -a log.txt
+   \`\`\`
+
+2. **Use \`set -e\` in scripts:**
+   \`\`\`bash
+   set -e  # Exit on error
+   set -u  # Error on undefined variables
+   set -o pipefail  # Pipe fails if ANY command fails
+   \`\`\`
+
+3. **Quote variables:**
+   \`\`\`bash
+   cat "$file" > output.txt  # Handles spaces
+   \`\`\`
+
+4. **Check PIPESTATUS for critical operations:**
+   \`\`\`bash
+   tar -czf backup.tar.gz /data 2>&1 | tee backup.log
+   [ ${PIPESTATUS[0]} -eq 0 ] || exit 1
+   \`\`\`
+
+5. **Use \`tee\` for both logging and monitoring:**
+   \`\`\`bash
+   ./deploy.sh 2>&1 | tee -a deploy.log
+   \`\`\`
+
+### Quick Reference
+
+\`\`\`bash
+command > file              # STDOUT to file (overwrite)
+command >> file             # STDOUT to file (append)
+command 2> file             # STDERR to file
+command &> file             # Both to file
+command 2>&1                # STDERR to STDOUT
+command < file              # STDIN from file
+command1 | command2         # Pipe STDOUT
+command | tee file          # Output to file AND screen
+command &>/dev/null         # Discard all output
+mkfifo pipe; cmd > pipe &   # Named pipe
+diff <(cmd1) <(cmd2)        # Process substitution
+\`\`\`
+
+> **LFCS Tip:** You'll need to redirect logs, pipe commands, and debug scripts. Practice \`2>&1\`, \`tee\`, and \`&>/dev/null\` patterns!
+        `,
+        keyPoints: [
+          "STDIN (0), STDOUT (1), STDERR (2) — three standard streams",
+          "> overwrites, >> appends",
+          "2>&1 redirects STDERR to STDOUT",
+          "| pipes output between commands",
+          "tee writes to file AND continues pipe",
+          "PIPESTATUS array shows exit codes of all pipe commands"
+        ]
+      },
+      {
+        id: 8,
         title: "Archive & Compression",
         type: "theory",
         duration: "20 min",
@@ -1613,10 +1999,10 @@ find $BACKUP_DIR -name "*.tar.gz" -mtime +30 -delete
         ]
       },
       {
-        id: 8,
+        id: 9,
         title: "Module 1 Quiz",
         type: "quiz",
-        duration: "15 min",
+        duration: "20 min",
         questions: [
           {
             id: 1,
@@ -1717,10 +2103,10 @@ find $BACKUP_DIR -name "*.tar.gz" -mtime +30 -delete
         ]
       },
       {
-        id: 9,
+        id: 10,
         title: "LFCS Exam Tasks",
         type: "exam",
-        duration: "45 min",
+        duration: "60 min",
         tasks: [
           {
             id: 1,
