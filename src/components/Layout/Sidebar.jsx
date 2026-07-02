@@ -2,8 +2,9 @@ import { NavLink, useLocation } from 'react-router-dom';
 import {
   Terminal, Users, Cpu, Network, HardDrive, Package,
   FileText, Shield, Code, Database, Box, Award,
-  Home, BookOpen, Trophy, Settings, ChevronDown, ChevronRight,
-  CheckCircle2, Circle, Play
+  Home, Trophy,
+  ChevronDown, ChevronRight,
+  CheckCircle2, Circle, X
 } from 'lucide-react';
 import { useState } from 'react';
 import { useProgress } from '../../context/ProgressContext';
@@ -14,7 +15,7 @@ const iconMap = {
   FileText, Shield, Code, Database, Box, Award
 };
 
-export default function Sidebar() {
+export default function Sidebar({ open = false, onClose }) {
   const location = useLocation();
   const { progress, getModuleProgress } = useProgress();
   const [expandedModule, setExpandedModule] = useState(null);
@@ -24,9 +25,13 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-72 bg-slate-900 border-r border-slate-800 h-screen overflow-y-auto fixed left-0 top-0">
+    <aside
+      className={`w-72 bg-slate-900 border-r border-slate-800 h-screen fixed left-0 top-0 z-50 flex flex-col transform transition-transform duration-200 lg:translate-x-0 ${
+        open ? 'translate-x-0' : '-translate-x-full'
+      }`}
+    >
       {/* Logo */}
-      <div className="p-6 border-b border-slate-800">
+      <div className="p-6 border-b border-slate-800 flex items-center justify-between">
         <NavLink to="/" className="flex items-center gap-3">
           <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center">
             <Terminal size={24} className="text-white" />
@@ -36,6 +41,13 @@ export default function Sidebar() {
             <p className="text-xs text-slate-500">Linux Mastery</p>
           </div>
         </NavLink>
+        <button
+          onClick={onClose}
+          className="lg:hidden p-1 text-slate-400 hover:text-white"
+          aria-label="Close sidebar"
+        >
+          <X size={20} />
+        </button>
       </div>
 
       {/* User Progress */}
@@ -69,7 +81,7 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="p-4">
+      <nav className="p-4 flex-1 overflow-y-auto min-h-0">
         <NavLink
           to="/"
           className={({ isActive }) =>
@@ -156,10 +168,33 @@ export default function Sidebar() {
       </nav>
 
       {/* Bottom section */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-800 bg-slate-900">
+      <div className="p-4 border-t border-slate-800 bg-slate-900 space-y-2 flex-shrink-0">
+        <NavLink
+          to="/terminal"
+          className={({ isActive }) =>
+            `flex items-center gap-3 p-3 border rounded-lg transition-colors ${
+              isActive
+                ? 'bg-emerald-500/20 border-emerald-500/50'
+                : 'bg-gradient-to-r from-emerald-500/10 to-green-500/10 border-emerald-500/30 hover:border-emerald-500/50'
+            }`
+          }
+        >
+          <Terminal size={20} className="text-emerald-400" />
+          <div>
+            <div className="text-sm font-medium text-emerald-400">Real Terminal</div>
+            <div className="text-xs text-slate-500">v86 Linux VM</div>
+          </div>
+        </NavLink>
+
         <NavLink
           to="/exam"
-          className="flex items-center gap-3 p-3 bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/30 rounded-lg hover:border-amber-500/50 transition-colors"
+          className={({ isActive }) =>
+            `flex items-center gap-3 p-3 border rounded-lg transition-colors ${
+              isActive
+                ? 'bg-amber-500/30 border-amber-500/50'
+                : 'bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border-amber-500/30 hover:border-amber-500/50'
+            }`
+          }
         >
           <Award size={20} className="text-amber-500" />
           <div>

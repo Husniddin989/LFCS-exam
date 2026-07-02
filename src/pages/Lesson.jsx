@@ -1,9 +1,9 @@
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { useState } from 'react';
 import {
   ArrowLeft, ArrowRight, CheckCircle2, Clock, BookOpen,
   Beaker, HelpCircle, ClipboardList, ChevronDown, ChevronUp,
-  Lightbulb, AlertTriangle, Terminal as TerminalIcon, Copy, Check, Eye, EyeOff
+  Lightbulb, AlertTriangle, Terminal as TerminalIcon, Eye, EyeOff
 } from 'lucide-react';
 import { useProgress } from '../context/ProgressContext';
 import { modules } from '../data/modules';
@@ -19,6 +19,37 @@ const lessonTypeIcons = {
 };
 
 // Simple markdown-like parser
+function renderTable(table, key) {
+  return (
+    <div key={key} className="overflow-x-auto my-4">
+      <table className="w-full border-collapse">
+        <thead>
+          {table.rows.filter(r => r.isHeader).map((row, rIdx) => (
+            <tr key={rIdx}>
+              {row.cells.map((cell, cIdx) => (
+                <th key={cIdx} className="border border-slate-600 bg-slate-800 px-4 py-2 text-left text-sm font-semibold">
+                  <span dangerouslySetInnerHTML={{ __html: parseInline(cell) }} />
+                </th>
+              ))}
+            </tr>
+          ))}
+        </thead>
+        <tbody>
+          {table.rows.filter(r => !r.isHeader).map((row, rIdx) => (
+            <tr key={rIdx}>
+              {row.cells.map((cell, cIdx) => (
+                <td key={cIdx} className="border border-slate-700 px-4 py-2 text-sm">
+                  <span dangerouslySetInnerHTML={{ __html: parseInline(cell) }} />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function parseContent(content) {
   if (!content) return null;
 
@@ -27,9 +58,17 @@ function parseContent(content) {
   let currentCodeBlock = null;
   let currentTable = null;
 
+  const flushTable = (key) => {
+    if (currentTable && currentTable.rows.length > 0) {
+      elements.push(renderTable(currentTable, key));
+    }
+    currentTable = null;
+  };
+
   lines.forEach((line, idx) => {
     // Code block start/end
     if (line.startsWith('```')) {
+      flushTable(`table-${idx}`);
       if (currentCodeBlock) {
         elements.push(
           <CodeBlock
@@ -59,43 +98,15 @@ function parseContent(content) {
         currentTable = { rows: [], isHeader: true };
       }
       const cells = line.split('|').slice(1, -1).map(c => c.trim());
-      if (cells.some(c => c.match(/^-+$/))) {
-        // Skip separator row
+      // Separator row supports alignment markers: :---, ---:, :---:, ----
+      if (cells.length > 0 && cells.every(c => /^:?-+:?$/.test(c))) {
         currentTable.isHeader = false;
         return;
       }
       currentTable.rows.push({ cells, isHeader: currentTable.isHeader });
       return;
     } else if (currentTable) {
-      elements.push(
-        <div key={`table-${idx}`} className="overflow-x-auto my-4">
-          <table className="w-full border-collapse">
-            <thead>
-              {currentTable.rows.filter(r => r.isHeader).map((row, rIdx) => (
-                <tr key={rIdx}>
-                  {row.cells.map((cell, cIdx) => (
-                    <th key={cIdx} className="border border-slate-600 bg-slate-800 px-4 py-2 text-left text-sm font-semibold">
-                      {cell}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            <tbody>
-              {currentTable.rows.filter(r => !r.isHeader).map((row, rIdx) => (
-                <tr key={rIdx}>
-                  {row.cells.map((cell, cIdx) => (
-                    <td key={cIdx} className="border border-slate-700 px-4 py-2 text-sm">
-                      <span dangerouslySetInnerHTML={{ __html: parseInline(cell) }} />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      );
-      currentTable = null;
+      flushTable(`table-${idx}`);
     }
 
     // Headers
@@ -142,6 +153,18 @@ function parseContent(content) {
     );
   });
 
+  // Flush any leftover table at end of content
+  flushTable('table-end');
+  if (currentCodeBlock) {
+    elements.push(
+      <CodeBlock
+        key="code-end"
+        code={currentCodeBlock.code.join('\n')}
+        language={currentCodeBlock.lang || 'bash'}
+      />
+    );
+  }
+
   return elements;
 }
 
@@ -156,13 +179,6 @@ function parseInline(text) {
 function ExamTask({ task }) {
   const [showSolution, setShowSolution] = useState(false);
   const [showHints, setShowHints] = useState(false);
-  const [copied, setCopied] = useState(false);
-
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   return (
     <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-6 mb-6">
@@ -228,7 +244,6 @@ function ExamTask({ task }) {
 
 export default function Lesson() {
   const { moduleId, lessonId } = useParams();
-  const navigate = useNavigate();
   const { completeLesson, completeLab, completeQuiz, isLessonCompleted } = useProgress();
 
   const module = modules.find(m => m.id === parseInt(moduleId));

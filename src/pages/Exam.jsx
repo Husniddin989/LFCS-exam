@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Award, Clock, AlertTriangle, Play, CheckCircle2, XCircle,
+  Award, Clock, AlertTriangle, Play, CheckCircle2,
   ArrowLeft, ArrowRight, Eye, EyeOff, RotateCcw, Trophy,
   Timer, Target, Zap
 } from 'lucide-react';
-import { useProgress } from '../context/ProgressContext';
 import CodeBlock from '../components/CodeBlock/CodeBlock';
 
 const examTasks = [
@@ -266,7 +265,7 @@ systemctl enable --now cleanup-tmp.timer`,
   }
 ];
 
-function ExamTask({ task, index, isActive, onShowSolution }) {
+function ExamTask({ task, index, isActive }) {
   const [showHints, setShowHints] = useState(false);
   const [showSolution, setShowSolution] = useState(false);
   const [completed, setCompleted] = useState(false);
@@ -367,17 +366,20 @@ export default function Exam() {
   const [examStarted, setExamStarted] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState(120 * 60); // 2 hours in seconds
   const [currentTask, setCurrentTask] = useState(0);
-  const { progress } = useProgress();
 
   useEffect(() => {
-    let timer;
-    if (examStarted && timeRemaining > 0) {
-      timer = setInterval(() => {
-        setTimeRemaining(prev => prev - 1);
-      }, 1000);
-    }
+    if (!examStarted) return;
+    const timer = setInterval(() => {
+      setTimeRemaining(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
     return () => clearInterval(timer);
-  }, [examStarted, timeRemaining]);
+  }, [examStarted]);
 
   const formatTime = (seconds) => {
     const hrs = Math.floor(seconds / 3600);

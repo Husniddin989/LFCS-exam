@@ -13,7 +13,7 @@ export default function Terminal({ commands = [], title = "Terminal", interactiv
     'ls': 'bin  boot  dev  etc  home  lib  media  mnt  opt  proc  root  run  sbin  srv  sys  tmp  usr  var',
     'pwd': '/home/student',
     'whoami': 'student',
-    'date': new Date().toString(),
+    'date': () => new Date().toString(),
     'uname -a': 'Linux lfcs-lab 5.15.0-generic #1 SMP x86_64 GNU/Linux',
     'echo $HOME': '/home/student',
     'cat /etc/os-release': 'NAME="Ubuntu"\nVERSION="22.04 LTS"\nID=ubuntu\nID_LIKE=debian',
@@ -39,11 +39,13 @@ export default function Terminal({ commands = [], title = "Terminal", interactiv
       return;
     }
 
-    const response = commandResponses[trimmedCmd] ||
+    const raw = commandResponses[trimmedCmd] ??
       Object.entries(commandResponses).find(([key]) =>
         trimmedCmd.startsWith(key.split(' ')[0])
-      )?.[1] ||
+      )?.[1] ??
       `bash: ${trimmedCmd.split(' ')[0]}: command not found (simulation mode)`;
+
+    const response = typeof raw === 'function' ? raw() : raw;
 
     setHistory(prev => [...prev, { cmd: trimmedCmd, output: response }]);
   };

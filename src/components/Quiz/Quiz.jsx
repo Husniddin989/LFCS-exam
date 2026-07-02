@@ -33,8 +33,7 @@ export default function Quiz({ questions, moduleId, quizId, onComplete }) {
       setSelectedAnswer(null);
       setShowResult(false);
     } else {
-      // Quiz completed
-      const score = answers.filter(a => a.isCorrect).length + (selectedAnswer === question.correct ? 1 : 0);
+      const score = answers.filter(a => a.isCorrect).length;
       setQuizComplete(true);
       if (onComplete) {
         onComplete(score, totalQuestions);

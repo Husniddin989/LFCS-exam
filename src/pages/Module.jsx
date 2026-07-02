@@ -1,8 +1,8 @@
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import {
   Terminal, Users, Cpu, Network, HardDrive, Package,
   FileText, Shield, Code, Database, Box, Award,
-  Clock, BookOpen, Play, CheckCircle2, Circle,
+  Clock, BookOpen, Play, CheckCircle2,
   ArrowLeft, ArrowRight, ChevronRight, Beaker, HelpCircle,
   ClipboardList
 } from 'lucide-react';
@@ -37,7 +37,6 @@ const lessonTypeLabels = {
 
 export default function Module() {
   const { moduleId } = useParams();
-  const navigate = useNavigate();
   const { progress, getModuleProgress, isLessonCompleted } = useProgress();
 
   const module = modules.find(m => m.id === parseInt(moduleId));

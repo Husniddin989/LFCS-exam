@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import Module from './pages/Module';
 import Lesson from './pages/Lesson';
 import Exam from './pages/Exam';
+import RealTerminal from './pages/RealTerminal';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
             <Route path="module/:moduleId" element={<Module />} />
             <Route path="module/:moduleId/lesson/:lessonId" element={<Lesson />} />
             <Route path="exam" element={<Exam />} />
+            <Route path="terminal" element={<RealTerminal />} />
           </Route>
         </Routes>
       </Router>

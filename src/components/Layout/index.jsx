@@ -1,27 +1,29 @@
-import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
 
   return (
     <div className="min-h-screen bg-slate-950">
-      {/* Sidebar */}
-      <Sidebar />
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/60 z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Main content */}
       <div className="lg:ml-72">
-        <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
+        <Header onMenuClick={() => setSidebarOpen(v => !v)} />
         <main className="pt-16 min-h-screen">
           <Outlet />
         </main>

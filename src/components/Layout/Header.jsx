@@ -1,25 +1,25 @@
-import { Search, Bell, User, Moon, Sun, Menu } from 'lucide-react';
+import { Search, Bell, User, Menu } from 'lucide-react';
 import { useState } from 'react';
 import { useProgress } from '../../context/ProgressContext';
 
 export default function Header({ onMenuClick }) {
-  const [darkMode, setDarkMode] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const { progress } = useProgress();
 
   return (
-    <header className="h-16 bg-slate-900/80 backdrop-blur-sm border-b border-slate-800 fixed top-0 right-0 left-72 z-40">
-      <div className="h-full px-6 flex items-center justify-between">
+    <header className="h-16 bg-slate-900/80 backdrop-blur-sm border-b border-slate-800 fixed top-0 right-0 left-0 lg:left-72 z-40">
+      <div className="h-full px-4 sm:px-6 flex items-center justify-between gap-3">
         {/* Mobile menu button */}
         <button
           onClick={onMenuClick}
-          className="lg:hidden p-2 text-slate-400 hover:text-white"
+          className="lg:hidden p-2 -ml-2 text-slate-400 hover:text-white flex-shrink-0"
+          aria-label="Open sidebar"
         >
           <Menu size={24} />
         </button>
 
         {/* Search */}
-        <div className="flex-1 max-w-xl">
+        <div className="flex-1 min-w-0 max-w-xl">
           <div className="relative">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
@@ -36,7 +36,7 @@ export default function Header({ onMenuClick }) {
         </div>
 
         {/* Right side */}
-        <div className="flex items-center gap-4 ml-4">
+        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
           {/* XP Badge */}
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border border-yellow-500/30 rounded-full">
             <span className="text-yellow-500 font-semibold text-sm">{progress.totalXP}</span>
@@ -44,17 +44,9 @@ export default function Header({ onMenuClick }) {
           </div>
 
           {/* Notifications */}
-          <button className="relative p-2 text-slate-400 hover:text-white transition-colors">
+          <button className="relative p-2 text-slate-400 hover:text-white transition-colors hidden sm:block">
             <Bell size={20} />
             <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-          </button>
-
-          {/* Theme toggle */}
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className="p-2 text-slate-400 hover:text-white transition-colors"
-          >
-            {darkMode ? <Sun size={20} /> : <Moon size={20} />}
           </button>
 
           {/* User menu */}

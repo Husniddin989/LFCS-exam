@@ -1,17 +1,45 @@
-# React + Vite
+# LFCS Exam Preparation Platform
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Linux Foundation Certified System Administrator (LFCS) imtihoniga tayyorgarlik uchun React + Vite platformasi. O'zbek tilida darslar, quizlar va real Linux terminal (brauzerda ishlaydigan v86 x86 emulator).
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- 12 modul, 51+ dars (nazariya, lab, quiz, exam task)
+- LFCS Practice Exam — 2 soatlik timer, 6 ta real task
+- Progress tracking (localStorage'da saqlanadi, XP hisobi)
+- **Real Linux Terminal** — brauzerda ishlaydigan Buildroot Linux VM (`/terminal`)
+- Responsive dizayn (mobile + desktop sidebar)
 
-## React Compiler
+## Ishga tushirish
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+npm install
+npm run dev
+```
 
-## Expanding the ESLint configuration
+`http://localhost:5173` da ochiladi.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
-# LFCS-exam
+## Real Terminal (v86)
+
+`/terminal` sahifasi haqiqiy Linux VM'ni brauzerda ishga tushiradi. Ishlash uchun:
+
+- Boot fayllar (`~5 MB`) copy.sh CDN'dan yuklab olinadi (proxy orqali)
+- Buildroot Linux — BusyBox + Lua + curl bilan
+- Barcha o'zgarishlar RAM'da, sahifa yopilganda yo'qoladi
+
+Offline / self-hosted variant uchun: [public/v86/IMAGES.md](public/v86/IMAGES.md).
+
+## Deploy
+
+- **Vercel**: `vercel.json` sozlangan. Image proxying uchun `public/v86/` ichiga fayllar tushiring (yuqoriga qarang).
+- **Docker + Nginx**: `Dockerfile` va `nginx.conf` mavjud. `docker build -t lfcs . && docker run -p 8080:80 lfcs`.
+
+## Stack
+
+- React 19 + Vite 7
+- React Router 7
+- Tailwind CSS 3
+- lucide-react (icons)
+- react-syntax-highlighter (code blocks)
+- **v86** (x86 emulator, WASM)
+- **@xterm/xterm** (terminal UI)

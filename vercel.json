@@ -1,5 +1,7 @@
 {
   "rewrites": [
+    { "source": "/v86-cdn/:path*", "destination": "https://copy.sh/v86/:path*" },
+    { "source": "/v86-img/:path*", "destination": "https://i.copy.sh/:path*" },
     { "source": "/(.*)", "destination": "/" }
   ]
 }
