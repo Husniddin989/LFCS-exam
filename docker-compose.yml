@@ -44,3 +44,4 @@ services:
     image: lfcs-lab:latest
     command: ["true"]
     restart: "no"
+    
