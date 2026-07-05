@@ -1,0 +1,46 @@
+# LFCS Platform — hammasi bitta buyruq bilan:
+#   docker compose up -d --build
+# Ochish: http://localhost:8080
+#
+# Eslatma: backend host Docker daemon'idan foydalanadi (socket mount) —
+# har terminal sessiya uchun hostda lfcs-lab containerlari ochiladi.
+# lab-image service faqat lfcs-lab image'ini build qilish uchun.
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - PORT=3001
+      - LFCS_LAB_IMAGE=lfcs-lab:latest
+      # Lab containerlarda tashqi internet yopiq (xavfsiz default).
+      # Kerak bo'lsa: bridge
+      - LFCS_CONTAINER_NETWORK=none
+      - LFCS_MAX_SESSIONS=10
+      - LFCS_MAX_SESSIONS_PER_IP=3
+    depends_on:
+      lab-image:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  # Bir martalik: lfcs-lab image'ini host daemon'ida build qiladi
+  lab-image:
+    build:
+      context: .
+      dockerfile: docker/lab.Dockerfile
+    image: lfcs-lab:latest
+    command: ["true"]
+    restart: "no"

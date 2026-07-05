@@ -8,6 +8,7 @@ import {
 import { useProgress } from '../context/ProgressContext';
 import { modules } from '../data/modules';
 import Terminal from '../components/Terminal/Terminal';
+import LabPractice from '../components/Terminal/LabPractice';
 import Quiz from '../components/Quiz/Quiz';
 import CodeBlock from '../components/CodeBlock/CodeBlock';
 
@@ -390,12 +391,17 @@ export default function Lesson() {
           <>
             {parseContent(lesson.content)}
 
-            {/* Lab commands */}
+            {/* Lab: real Docker practice terminal (backend bo'lsa) */}
+            {lesson.type === 'lab' && (
+              <LabPractice moduleId={module.id} />
+            )}
+
+            {/* Lab commands (simulyatsiya — backend'siz ham ishlaydi) */}
             {lesson.type === 'lab' && lesson.commands && (
               <div className="mt-8">
                 <h3 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
                   <TerminalIcon size={20} className="text-green-400" />
-                  Interaktiv Terminal
+                  Interaktiv Terminal (simulyatsiya)
                 </h3>
                 <Terminal
                   commands={lesson.commands}

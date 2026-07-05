@@ -4,10 +4,11 @@ import {
   FileText, Shield, Code, Database, Box, Award,
   Clock, BookOpen, Play, CheckCircle2,
   ArrowLeft, ArrowRight, ChevronRight, Beaker, HelpCircle,
-  ClipboardList
+  ClipboardList, GraduationCap, AlertTriangle, FlaskConical
 } from 'lucide-react';
 import { useProgress } from '../context/ProgressContext';
 import { modules } from '../data/modules';
+import { moduleTests } from '../data/moduleTests';
 
 const iconMap = {
   Terminal, Users, Cpu, Network, HardDrive, Package,
@@ -37,7 +38,7 @@ const lessonTypeLabels = {
 
 export default function Module() {
   const { moduleId } = useParams();
-  const { progress, getModuleProgress, isLessonCompleted } = useProgress();
+  const { progress, getModuleProgress, isLessonCompleted, getModuleTestResult, getModuleLabTestResult } = useProgress();
 
   const module = modules.find(m => m.id === parseInt(moduleId));
   const currentModuleIndex = modules.findIndex(m => m.id === parseInt(moduleId));
@@ -66,6 +67,11 @@ export default function Module() {
   const firstIncompleteLesson = module.lessons?.find(
     lesson => !isLessonCompleted(module.id, lesson.id)
   );
+
+  const testBank = moduleTests[module.id];
+  const testResult = getModuleTestResult(module.id);
+  const labTestResult = getModuleLabTestResult(module.id);
+  const allLessonsDone = lessonCount > 0 && completedCount === lessonCount;
 
   return (
     <div className="p-6 max-w-5xl mx-auto fade-in">
@@ -204,6 +210,99 @@ export default function Module() {
           </div>
         )}
       </div>
+
+      {/* Module Tests */}
+      {testBank?.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold text-white mb-4">Yakuniy test</h2>
+
+          {/* Practical (terminal) test — primary */}
+          <div className={`bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border rounded-xl p-5 mb-3 ${
+            labTestResult?.best >= 70 ? 'border-green-500/40' : 'border-emerald-500/30'
+          }`}>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                labTestResult?.best >= 70 ? 'bg-green-500/20' : 'bg-emerald-500/20'
+              }`}>
+                <FlaskConical size={26} className={labTestResult?.best >= 70 ? 'text-green-400' : 'text-emerald-400'} />
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-white">Amaliy test — real terminalda</h3>
+                <p className="text-sm text-slate-400">
+                  Topshiriqlarni Docker containerda bajarasiz, har biri avtomatik tekshiriladi
+                </p>
+                {!allLessonsDone && (
+                  <p className="text-xs text-amber-400/90 mt-1 flex items-center gap-1">
+                    <AlertTriangle size={12} />
+                    Avval barcha darslarni tugatish tavsiya etiladi ({completedCount}/{lessonCount})
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-4">
+                {labTestResult && (
+                  <div className="text-right">
+                    <div className={`text-2xl font-bold ${
+                      labTestResult.best >= 70 ? 'text-green-400' : labTestResult.best >= 50 ? 'text-yellow-400' : 'text-red-400'
+                    }`}>
+                      {labTestResult.best}%
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      {labTestResult.best >= 70 ? "o'zlashtirildi" : `${labTestResult.attempts} urinish`}
+                    </div>
+                  </div>
+                )}
+                <Link
+                  to={`/module/${module.id}/lab-test`}
+                  className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-opacity whitespace-nowrap"
+                >
+                  {labTestResult ? 'Qayta topshirish' : "O'qib chiqdim — boshlash"}
+                </Link>
+              </div>
+            </div>
+          </div>
+          <div className={`bg-gradient-to-br from-purple-500/10 to-indigo-500/10 border rounded-xl p-5 ${
+            testResult?.best >= 70 ? 'border-green-500/40' : 'border-purple-500/30'
+          }`}>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                testResult?.best >= 70 ? 'bg-green-500/20' : 'bg-purple-500/20'
+              }`}>
+                <GraduationCap size={26} className={testResult?.best >= 70 ? 'text-green-400' : 'text-purple-400'} />
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-white">Nazariy test</h3>
+                <p className="text-sm text-slate-400">
+                  {testBank.length} savol · o'tish bali 70% · bilimingizni savollar bilan tekshiring
+                </p>
+              </div>
+
+              <div className="flex items-center gap-4">
+                {testResult && (
+                  <div className="text-right">
+                    <div className={`text-2xl font-bold ${
+                      testResult.best >= 70 ? 'text-green-400' : testResult.best >= 50 ? 'text-yellow-400' : 'text-red-400'
+                    }`}>
+                      {testResult.best}%
+                    </div>
+                    <div className="text-xs text-slate-500">
+                      {testResult.best >= 70 ? "o'zlashtirildi" : `${testResult.attempts} urinish`}
+                    </div>
+                  </div>
+                )}
+                <Link
+                  to={`/module/${module.id}/test`}
+                  className="px-5 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-600 text-white text-sm font-medium rounded-lg hover:opacity-90 transition-opacity whitespace-nowrap"
+                >
+                  {testResult ? 'Qayta topshirish' : 'Testni boshlash'}
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Module Navigation */}
       <div className="flex items-center justify-between pt-6 border-t border-slate-800">

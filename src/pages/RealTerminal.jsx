@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Terminal as XTerminal, Play, Square, RotateCcw, AlertTriangle, Loader2 } from 'lucide-react';
+import {
+  Terminal as XTerminal, Play, Square, RotateCcw, AlertTriangle,
+  Loader2, Container, Globe
+} from 'lucide-react';
 
 import { Terminal as Xterm } from '@xterm/xterm';
 import '@xterm/xterm/css/xterm.css';
@@ -7,6 +10,8 @@ import '@xterm/xterm/css/xterm.css';
 // v86 wasm/main lib — bundled via npm
 import { V86 } from 'v86';
 import v86WasmUrl from 'v86/build/v86.wasm?url';
+
+import DockerTerminal from '../components/Terminal/DockerTerminal';
 
 // Public asset URLs (see IMAGES.md).
 // Both routes proxy to copy.sh (through Vite/Vercel/Nginx) — the upstream
@@ -41,7 +46,128 @@ async function resolveAsset(cdnBase, localPath, remoteName, sizeHint) {
 const resolveBios = (name) => resolveAsset(BIOS_BASE, `bios/${name}`, `bios/${name}`);
 const resolveImage = (name, size) => resolveAsset(IMAGE_BASE, `images/${name}`, name, size);
 
-export default function RealTerminal() {
+// ---------- Docker playground (backend + container per session) ----------
+
+function DockerPlayground() {
+  const [sessionId, setSessionId] = useState(null);
+  const [status, setStatus] = useState('idle'); // idle | starting | running | error
+  const [error, setError] = useState(null);
+  const sessionRef = useRef(null);
+  sessionRef.current = sessionId;
+
+  useEffect(() => () => {
+    if (sessionRef.current) {
+      fetch(`/api/sessions/${sessionRef.current}`, { method: 'DELETE' }).catch(() => {});
+    }
+  }, []);
+
+  const start = useCallback(async () => {
+    setStatus('starting');
+    setError(null);
+    try {
+      const res = await fetch('/api/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'playground' }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error || res.statusText);
+      setSessionId(body.sessionId);
+      setStatus('running');
+    } catch (e) {
+      setError(e.message);
+      setStatus('error');
+    }
+  }, []);
+
+  const stop = useCallback(() => {
+    if (sessionId) {
+      fetch(`/api/sessions/${sessionId}`, { method: 'DELETE' }).catch(() => {});
+    }
+    setSessionId(null);
+    setStatus('idle');
+  }, [sessionId]);
+
+  return (
+    <div>
+      <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4 mb-4">
+        <div className="flex items-start gap-3">
+          <Container className="text-emerald-400 flex-shrink-0 mt-0.5" size={18} />
+          <div className="text-sm text-slate-300 space-y-1">
+            <p className="font-medium text-emerald-400">Docker rejimi — to'liq Ubuntu 22.04 muhiti</p>
+            <ul className="list-disc list-inside space-y-0.5 text-slate-400">
+              <li>Har sessiya uchun alohida container — xohlagancha buzing, hech narsa buzilmaydi.</li>
+              <li><code className="text-emerald-400">useradd, chage, crontab, ip, iptables, mkfs.ext4, vim</code> — hammasi bor.</li>
+              <li>Talab: backend (<code className="text-emerald-400">npm run dev:full</code>) va Docker daemon.</li>
+              <li>Container yopilganda yoki sahifadan chiqilganda o'chiriladi.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 mb-3">
+        {status !== 'running' && (
+          <button
+            onClick={start}
+            disabled={status === 'starting'}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-60 text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            {status === 'starting' ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
+            {status === 'starting' ? 'Ochilmoqda...' : 'Container ochish'}
+          </button>
+        )}
+        {status === 'running' && (
+          <button
+            onClick={stop}
+            className="flex items-center gap-2 px-4 py-2 bg-red-500/80 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors"
+          >
+            <Square size={16} />
+            To'xtatish
+          </button>
+        )}
+        <div className="ml-auto text-xs text-slate-400 flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full ${
+            status === 'running' ? 'bg-green-400 animate-pulse' :
+            status === 'starting' ? 'bg-yellow-400 animate-pulse' :
+            status === 'error' ? 'bg-red-400' : 'bg-slate-500'
+          }`} />
+          <span className="font-mono">{status}</span>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 mb-3">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="text-red-400 flex-shrink-0 mt-0.5" size={18} />
+            <div>
+              <p className="font-medium text-red-400 mb-1">Container ochilmadi</p>
+              <p className="text-sm text-slate-300 font-mono break-all">{error}</p>
+              <p className="text-xs text-slate-500 mt-2">
+                Backend: <code className="text-emerald-400">npm run server</code>,
+                lab image: <code className="text-emerald-400">npm run lab:build</code>.
+                Backend bo'lmasa v86 rejimidan foydalaning.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {status === 'running' && sessionId && (
+        <DockerTerminal sessionId={sessionId} />
+      )}
+
+      {status === 'idle' && (
+        <div className="bg-[#0d1117] border border-slate-700 rounded-lg flex items-center justify-center text-slate-500 text-sm" style={{ height: '300px' }}>
+          "Container ochish" tugmasini bosing
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------- v86 in-browser VM ----------
+
+function V86Terminal() {
   const containerRef = useRef(null);
   const emulatorRef = useRef(null);
 
@@ -170,18 +296,7 @@ export default function RealTerminal() {
   const loading = status === 'loading';
 
   return (
-    <div className="p-6 max-w-6xl mx-auto fade-in">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white flex items-center gap-2 mb-1">
-          <XTerminal size={28} className="text-emerald-400" />
-          Real Linux Terminal
-        </h1>
-        <p className="text-slate-400 text-sm">
-          Brauzeringizda ishlaydigan haqiqiy Linux VM (v86 x86 emulator + Buildroot).
-          Barcha buyruqlarni haqiqiy shellda sinab ko'ring.
-        </p>
-      </div>
-
+    <div>
       {/* Warning banner */}
       <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 mb-4">
         <div className="flex items-start gap-3">
@@ -303,9 +418,80 @@ export default function RealTerminal() {
 
       {/* Help */}
       <div className="mt-4 text-xs text-slate-500">
-        Ipucuqchi: shellga <code className="text-emerald-400">ls /bin</code> yozib mavjud buyruqlarni ko'ring.
+        Maslahat: shellga <code className="text-emerald-400">ls /bin</code> yozib mavjud buyruqlarni ko'ring.
         Login <code className="text-emerald-400">root</code> (parolsiz).
       </div>
+    </div>
+  );
+}
+
+// ---------- Page with mode switch ----------
+
+export default function RealTerminal() {
+  const [mode, setMode] = useState('docker'); // docker | v86
+  const [backendUp, setBackendUp] = useState(null); // null = checking
+
+  useEffect(() => {
+    let cancelled = false;
+    const markDown = () => {
+      if (cancelled) return;
+      setBackendUp(false);
+      // Backend is down — fall back to v86 so the page still works
+      setMode('v86');
+    };
+    fetch('/api/health')
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        if (d.docker) setBackendUp(true);
+        else markDown();
+      })
+      .catch(markDown);
+    return () => { cancelled = true; };
+  }, []);
+
+  return (
+    <div className="p-6 max-w-6xl mx-auto fade-in">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-white flex items-center gap-2 mb-1">
+          <XTerminal size={28} className="text-emerald-400" />
+          Real Linux Terminal
+        </h1>
+        <p className="text-slate-400 text-sm">
+          Buyruqlarni haqiqiy Linux muhitida sinab ko'ring — Docker container (to'liq Ubuntu)
+          yoki brauzerda ishlaydigan v86 VM.
+        </p>
+      </div>
+
+      {/* Mode tabs */}
+      <div className="flex items-center gap-2 mb-4">
+        <button
+          onClick={() => setMode('docker')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            mode === 'docker'
+              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+              : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white'
+          }`}
+        >
+          <Container size={16} />
+          Docker
+          {backendUp === true && <span className="w-1.5 h-1.5 rounded-full bg-green-400" />}
+          {backendUp === false && <span className="w-1.5 h-1.5 rounded-full bg-red-400" />}
+        </button>
+        <button
+          onClick={() => setMode('v86')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            mode === 'v86'
+              ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+              : 'bg-slate-800 text-slate-400 border border-slate-700 hover:text-white'
+          }`}
+        >
+          <Globe size={16} />
+          v86 (brauzer)
+        </button>
+      </div>
+
+      {mode === 'docker' ? <DockerPlayground /> : <V86Terminal />}
     </div>
   );
 }

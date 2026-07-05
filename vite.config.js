@@ -5,6 +5,12 @@ import react from '@vitejs/plugin-react'
 // i.copy.sh (large kernel images). i.copy.sh is a Bunny CDN with
 // hotlink protection so we forge a copy.sh Referer.
 const v86Proxy = {
+  // LFCS lab backend (Docker sessions + terminal WS + verify)
+  '/api': {
+    target: 'http://localhost:3001',
+    changeOrigin: true,
+    ws: true,
+  },
   '/v86-cdn': {
     target: 'https://copy.sh',
     changeOrigin: true,
